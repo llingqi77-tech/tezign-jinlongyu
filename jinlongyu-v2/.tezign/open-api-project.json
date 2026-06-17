@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "project": {
+    "id": "e7a6e81a-29a2-459c-9e9f-ef0ed2309c88",
+    "name": "金龙鱼履约Agent"
+  },
+  "environment": {
+    "name": "prod",
+    "baseUrl": "https://admin.tezign.net"
+  }
+}

@@ -1,0 +1,123 @@
+:root {
+  /* Brand — Orange SaaS */
+  --color-brand: #ff4d00;
+  --color-brand-dark: #e64500;
+  --color-brand-darker: #cc3d00;
+  --color-brand-light: #fff4ef;
+  --color-brand-muted: rgba(255, 77, 0, 0.1);
+  --color-brand-ring: rgba(255, 77, 0, 0.25);
+
+  /* Aliases (Firecrawl legacy names) */
+  --color-fire-orange: var(--color-brand);
+  --color-code-blue: var(--color-brand);
+  --color-cloud-canvas: #f0e8e2;
+  --color-canvas-warm: #faf6f3;
+  --color-ink-black: #262626;
+  --color-paper-white: #ffffff;
+  --color-slate-gray: #727272;
+  --color-stone-gray: #616161;
+  --color-silver-mist: #949494;
+  --color-frost-gray: #e0d6ce;
+  --color-pale-sienna: #fcddcc;
+  --color-powder-pink: #febec2;
+
+  /* Semantic */
+  --color-ink: var(--color-ink-black);
+  --color-paper-canvas: var(--color-canvas-warm);
+  --color-off-black: var(--color-ink-black);
+  --color-pale-stone: var(--color-slate-gray);
+  --color-whisper-gray: var(--color-stone-gray);
+  --color-atmosphere-wash: var(--color-brand-light);
+  --color-subtle-link: var(--color-brand-dark);
+  --color-faint-text: var(--color-silver-mist);
+  --color-surface: var(--color-canvas-warm);
+  --color-card: var(--color-paper-white);
+  --color-muted: var(--color-slate-gray);
+  --color-border: var(--color-cloud-canvas);
+  --color-accent: var(--color-brand);
+  --color-marketing-orange: var(--color-brand);
+  --color-segment-track: var(--color-brand-light);
+
+  --color-chat-bg: var(--color-paper-white);
+  --color-chat-primary: var(--color-ink-black);
+  --color-chat-primary-light: var(--color-brand);
+  --color-chat-bubble-user: var(--color-brand);
+  --color-chat-bubble-agent: var(--color-paper-white);
+  --color-chat-bubble-agent-border: rgba(255, 77, 0, 0.12);
+
+  /* Typography — SaaS UI (Inter + 系统中文，指标用 tabular-nums 而非展示型等宽体) */
+  --font-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei UI', 'Microsoft YaHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-ui: var(--font-sans);
+  --font-body: var(--font-sans);
+  --font-display: var(--font-sans);
+  /** 看板/KPI 大数字：与 UI 同族 + 表格数字对齐 */
+  --font-stat: var(--font-sans);
+  /** 订单号、SKU 等：系统等宽，避免 JetBrains 等展示字形 */
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+
+  --text-caption: 11px;
+  --leading-caption: 1.4;
+  --tracking-caption: 0.1px;
+  --text-body-sm: 14px;
+  --leading-body-sm: 1.54;
+  --text-body: 14px;
+  --leading-body: 1.54;
+  --text-body-lg: 16px;
+  --leading-body-lg: 1.6;
+  --text-subheading: 20px;
+  --leading-subheading: 1.43;
+  --text-heading-sm: 22px;
+  --leading-heading-sm: 1.33;
+  --text-heading: 24px;
+  --leading-heading: 1.33;
+  --text-heading-lg: 40px;
+  --leading-heading-lg: 1.1;
+
+  /* Spacing */
+  --spacing-unit: 4px;
+  --section-gap: 24px;
+  --card-padding: 16px;
+  --element-gap: 12px;
+  --page-max-width: 1200px;
+
+  /* Border radius */
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-2xl-2: 20px;
+  --radius-full: 999px;
+  --radius-bubble: 16px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+  --radius-button: 8px;
+  --radius-tag: 999px;
+  --radius-input: 8px;
+
+  /* Shadows — warm orange tint */
+  --shadow-brand: 0 4px 14px rgba(255, 77, 0, 0.18);
+  --shadow-xl: rgba(255, 77, 0, 0.04) 0px 40px 48px -20px, rgba(0, 0, 0, 0.03) 0px 32px 32px -20px,
+    rgba(0, 0, 0, 0.03) 0px 16px 24px -12px, rgba(0, 0, 0, 0.04) 0px 0px 0px 1px;
+  --shadow-xl-2: rgba(255, 77, 0, 0.06) 0px 24px 32px -12px, rgba(0, 0, 0, 0.03) 0px 16px 24px -8px,
+    rgba(0, 0, 0, 0.03) 0px 8px 16px -4px, rgba(0, 0, 0, 0.04) 0px 0px 0px 1px;
+  --shadow-xl-3: rgba(255, 77, 0, 0.05) 0px 0px 44px 0px, rgba(0, 0, 0, 0.04) 0px 88px 56px -20px,
+    rgba(0, 0, 0, 0.03) 0px 32px 32px -20px, rgba(0, 0, 0, 0.04) 0px 16px 24px -12px,
+    rgba(255, 77, 0, 0.08) 0px 0px 0px 1px;
+  --shadow-subtle: var(--color-brand-light) 0px 0px 0px 6px;
+  --shadow-soft: var(--shadow-xl-2);
+  --shadow-input: var(--shadow-subtle);
+  --shadow-md: var(--shadow-xl-3);
+  --shadow-card: var(--shadow-xl);
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-app-width: 390px;
+  --desktop-canvas: var(--color-canvas-warm);
+
+  --surface-canvas: var(--color-canvas-warm);
+  --surface-card-base: var(--color-paper-white);
+  --surface-elevated-card: #ffffff;
+}
