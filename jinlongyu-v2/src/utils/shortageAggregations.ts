@@ -14,6 +14,7 @@ import type {
   SalesSkuUpdateHotelGroup,
   ShortagePO,
   ShortagePOLine,
+  SupplierProcurementBatch,
   WorkbenchRole,
   FulfillmentOverviewStatusKind,
 } from '../types/shortage'
@@ -986,7 +987,7 @@ export function getPendingProcurementGroups(orders: ShortagePO[], refDate = new 
   return groupBySku(orders, refDate)
 }
 
-export type ProcurementListSort = 'delivery' | 'oa'
+export type ProcurementListSort = 'delivery' | 'supplier' | 'oa'
 
 export type ProcurementSkuOaBucket = 'approved' | 'pending' | 'rejected' | 'none'
 
@@ -1097,6 +1098,66 @@ export function getMostUrgentProcurementSkuGroups(
     if (g.earliestRequiredDate < earliest) earliest = g.earliestRequiredDate
   }
   return groups.filter((g) => g.earliestRequiredDate === earliest)
+}
+
+/** 已填写缺货处理信息、尚未按供应商发起采购订单 / OA 的订单行 */
+export function getLinesAwaitingSupplierPoSubmit(
+  orders: ShortagePO[],
+  refDate = new Date()
+): Array<ShortagePOLine & { po: ShortagePO }> {
+  return filterProcurementTaskLines(getShortageLines(orders), refDate).filter(
+    (line) =>
+      !isLogisticsFulfillment(line.fulfillmentMethod) &&
+      isProcurementLineSubmitted(line) &&
+      line.oaApprovalStatus === 'none' &&
+      !line.procurementConfirmed &&
+      Boolean(line.supplierName?.trim())
+  )
+}
+
+export function getProcurementSkuSubmittedSupplier(
+  group: ProcurementSkuGroup,
+  orders: ShortagePO[],
+  refDate = new Date()
+): string | null {
+  const line = filterProcurementTaskLines(getShortageLines(orders), refDate).find(
+    (l) => l.sku === group.sku && isProcurementLineSubmitted(l)
+  )
+  return line?.supplierName?.trim() || null
+}
+
+export function getSupplierProcurementBatches(
+  orders: ShortagePO[],
+  refDate = new Date()
+): SupplierProcurementBatch[] {
+  const awaiting = getLinesAwaitingSupplierPoSubmit(orders, refDate)
+  const bySupplier = new Map<string, Array<ShortagePOLine & { po: ShortagePO }>>()
+  for (const item of awaiting) {
+    const name = item.supplierName!.trim()
+    const list = bySupplier.get(name) ?? []
+    list.push(item)
+    bySupplier.set(name, list)
+  }
+
+  const allGroups = groupBySku(orders, refDate)
+  const batches: SupplierProcurementBatch[] = []
+
+  for (const [supplierName, items] of bySupplier) {
+    const skus = new Set(items.map((i) => i.sku))
+    const skuGroups = allGroups.filter((g) => skus.has(g.sku))
+    const productNames = [...new Set(skuGroups.map((g) => g.productName))].slice(0, 4)
+    batches.push({
+      supplierName,
+      skuCount: skus.size,
+      lineCount: items.length,
+      totalAmount: items.reduce((sum, i) => sum + (i.amount || 0), 0),
+      productNames,
+      skuGroups,
+      lineIds: items.map((i) => i.id),
+    })
+  }
+
+  return batches.sort((a, b) => a.supplierName.localeCompare(b.supplierName, 'zh-CN'))
 }
 
 export function formatMostUrgentProcurementReply(groups: ProcurementSkuGroup[]): string {

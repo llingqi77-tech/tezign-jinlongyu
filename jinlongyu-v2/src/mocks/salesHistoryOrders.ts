@@ -1,4 +1,9 @@
-import type { HistoryFulfillmentKind, HistoryOrder, HistoryOrderLine } from '../types/shortage'
+import type {
+  HistoryEntity,
+  HistoryFulfillmentKind,
+  HistoryOrder,
+  HistoryOrderLine,
+} from '../types/shortage'
 
 function addDays(base: Date, days: number): string {
   const d = new Date(base.getFullYear(), base.getMonth(), base.getDate())
@@ -9,35 +14,38 @@ function addDays(base: Date, days: number): string {
   return `${y}-${m}-${day}`
 }
 
-const CITY_HOTELS: { city: string; hotels: { name: string; address: string }[] }[] = [
+const CITY_HOTELS: {
+  city: string
+  hotels: { name: string; address: string; entity: HistoryEntity }[]
+}[] = [
   {
     city: '北京',
     hotels: [
-      { name: '北京香格里拉饭店', address: '北京市朝阳区建国门外大街1号' },
-      { name: '北京饭店', address: '北京市东城区东长安街33号' },
-      { name: '王府井希尔顿酒店', address: '北京市东城区王府井东街8号' },
+      { name: '北京香格里拉饭店', address: '北京市朝阳区建国门外大街1号', entity: '丰厨供应链' },
+      { name: '北京饭店', address: '北京市东城区东长安街33号', entity: '益海嘉里德立安' },
+      { name: '王府井希尔顿酒店', address: '北京市东城区王府井东街8号', entity: '丰厨供应链' },
     ],
   },
   {
     city: '上海',
     hotels: [
-      { name: '上海浦东香格里拉', address: '上海市浦东新区富城路33号' },
-      { name: '上海和平饭店', address: '上海市黄浦区南京东路20号' },
-      { name: '静安瑞吉酒店', address: '上海市静安区北京西路1008号' },
+      { name: '上海浦东香格里拉', address: '上海市浦东新区富城路33号', entity: '益海嘉里德立安' },
+      { name: '上海和平饭店', address: '上海市黄浦区南京东路20号', entity: '丰厨供应链' },
+      { name: '静安瑞吉酒店', address: '上海市静安区北京西路1008号', entity: '益海嘉里德立安' },
     ],
   },
   {
     city: '广州',
     hotels: [
-      { name: '广州白天鹅宾馆', address: '广州市荔湾区沙面南街1号' },
-      { name: '广州花园酒店', address: '广州市越秀区环市东路368号' },
+      { name: '广州白天鹅宾馆', address: '广州市荔湾区沙面南街1号', entity: '丰厨供应链' },
+      { name: '广州花园酒店', address: '广州市越秀区环市东路368号', entity: '益海嘉里德立安' },
     ],
   },
   {
     city: '成都',
     hotels: [
-      { name: '成都富力丽思卡尔顿', address: '成都市青羊区顺城大街269号' },
-      { name: '成都香格里拉大酒店', address: '成都市锦江区滨江东路9号' },
+      { name: '成都富力丽思卡尔顿', address: '成都市青羊区顺城大街269号', entity: '益海嘉里德立安' },
+      { name: '成都香格里拉大酒店', address: '成都市锦江区滨江东路9号', entity: '丰厨供应链' },
     ],
   },
 ]
@@ -116,6 +124,7 @@ export const MOCK_SALES_HISTORY_ORDERS: HistoryOrder[] = (() => {
       out.push({
         id: `HO-${deliveryDate.replace(/-/g, '')}-${counter}`,
         city: cityBlock.city,
+        entity: hotel.entity,
         hotelName: hotel.name,
         deliveryAddress: hotel.address,
         deliveryDate,

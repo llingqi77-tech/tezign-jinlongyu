@@ -11,7 +11,7 @@ import { getMobileHomeKpis, getRoleTasksSorted } from './mobileAgentSummary'
 
 export type MobileSalesQuickView = 'hotel_overview' | 'fulfillment'
 
-export type MobileProcurementQuickView = 'delivery' | 'oa' | 'fulfillment'
+export type MobileProcurementQuickView = 'delivery' | 'supplier' | 'oa' | 'fulfillment'
 
 export type MobileQuickActionKind =
   | 'open_dashboard'
@@ -27,15 +27,15 @@ export interface MobileQuickActionItem {
   kind: MobileQuickActionKind
   message?: string
   kpiKind?: MobileKpiKind
-  procurementSort?: 'delivery' | 'oa'
+  procurementSort?: 'delivery' | 'supplier' | 'oa'
 }
 
 const SALES_QUICK_ACTIONS: MobileQuickActionItem[] = []
 
 const PROCUREMENT_QUICK_ACTIONS: MobileQuickActionItem[] = [
-  { id: 'delivery', label: '待办清单', kind: 'procurement_sort', procurementSort: 'delivery' },
+  { id: 'delivery', label: '缺货采购处理', kind: 'procurement_sort', procurementSort: 'delivery' },
   { id: 'oa', label: 'OA进度查询', kind: 'procurement_sort', procurementSort: 'oa' },
-  { id: 'dashboard', label: '缺货品履约数据', kind: 'open_dashboard' },
+  { id: 'dashboard', label: '履约数据总览', kind: 'open_dashboard' },
 ]
 
 /** 运营进入即展示履约数据面板，无需底部快捷 Tab */

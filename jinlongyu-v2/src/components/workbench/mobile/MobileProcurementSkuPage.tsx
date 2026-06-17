@@ -605,7 +605,7 @@ export function MobileProcurementSkuPage({ sku }: MobileProcurementSkuPageProps)
       {!detailPageOpen && !formReadOnly ? (
         <footer className="mobile-procurement-page__footer">
           <button type="button" className="procurement-sku-card__submit" onClick={handleSubmit}>
-            确认并提交到采购订单与OA流程
+            提交缺货处理信息
           </button>
         </footer>
       ) : null}
@@ -625,7 +625,10 @@ export function MobileProcurementSkuPage({ sku }: MobileProcurementSkuPageProps)
           />
           <div className="mobile-procurement-success-dialog__panel">
             <p id="mobile-procurement-success-title" className="mobile-procurement-success-dialog__title">
-              已提交成功
+              缺货处理信息已提交
+            </p>
+            <p className="mobile-procurement-success-dialog__sub">
+              该品已归入待提交列表。返回首页后，右滑至「提交采购订单」，将同一供应商的缺货品一并发起采购订单与 OA。
             </p>
             <button
               type="button"

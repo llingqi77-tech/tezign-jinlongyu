@@ -1,4 +1,5 @@
 import type {
+  HistoryEntity,
   HistoryFulfillmentKind,
   HistoryHotelGroup,
   HistoryOrder,
@@ -9,6 +10,11 @@ import type {
 } from '../types/shortage'
 import { MOCK_SALES_HISTORY_ORDERS } from '../mocks/salesHistoryOrders'
 import { resolveProductCategory } from './productCategory'
+
+export const HISTORY_ENTITY_OPTIONS: HistoryEntity[] = ['丰厨供应链', '益海嘉里德立安']
+
+/** 日期筛选最长跨度（含起止日） */
+export const HISTORY_MAX_DATE_RANGE_DAYS = 7
 
 export const HISTORY_STATUS_LABEL: Record<HistoryOrderStatus, string> = {
   completed: '已完成',
@@ -183,16 +189,24 @@ export function getHistoryCities(): string[] {
   return [...new Set(MOCK_SALES_HISTORY_ORDERS.map((o) => o.city))]
 }
 
-export function getHistoryHotels(city: string | null): string[] {
+export function getHistoryEntities(city: string | null): HistoryEntity[] {
   const source = city
     ? MOCK_SALES_HISTORY_ORDERS.filter((o) => o.city === city)
     : MOCK_SALES_HISTORY_ORDERS
+  return [...new Set(source.map((o) => o.entity))].sort((a, b) => a.localeCompare(b, 'zh-CN'))
+}
+
+export function getHistoryHotels(city: string | null, entity: HistoryEntity | null): string[] {
+  let source = MOCK_SALES_HISTORY_ORDERS
+  if (city) source = source.filter((o) => o.city === city)
+  if (entity) source = source.filter((o) => o.entity === entity)
   return [...new Set(source.map((o) => o.hotelName))].sort((a, b) => a.localeCompare(b, 'zh-CN'))
 }
 
 export function filterHistoryOrders(filter: HistoryOrderFilter): HistoryOrder[] {
   const matched = MOCK_SALES_HISTORY_ORDERS.filter((o) => {
     if (filter.city && o.city !== filter.city) return false
+    if (filter.entity && o.entity !== filter.entity) return false
     if (filter.hotel && o.hotelName !== filter.hotel) return false
     if (filter.start && o.deliveryDate < filter.start) return false
     if (filter.end && o.deliveryDate > filter.end) return false
@@ -236,7 +250,23 @@ export function summarizeHistoryOrders(orders: HistoryOrder[]): HistoryOrderSumm
   }
 }
 
-/** 默认筛选区间：最近 30 天（含今日） */
+/** 将结束日期限制在起始日期起最多 HISTORY_MAX_DATE_RANGE_DAYS 天内（含首尾） */
+export function clampHistoryDateRange(start: string, end: string): { start: string; end: string } {
+  if (!start || !end) return { start, end }
+  const startDate = new Date(`${start}T00:00:00`)
+  const endDate = new Date(`${end}T00:00:00`)
+  const maxEnd = new Date(startDate)
+  maxEnd.setDate(maxEnd.getDate() + HISTORY_MAX_DATE_RANGE_DAYS - 1)
+  if (endDate > maxEnd) {
+    const y = maxEnd.getFullYear()
+    const m = String(maxEnd.getMonth() + 1).padStart(2, '0')
+    const d = String(maxEnd.getDate()).padStart(2, '0')
+    return { start, end: `${y}-${m}-${d}` }
+  }
+  return { start, end }
+}
+
+/** 默认筛选区间：最近 7 天（含今日） */
 export function getDefaultHistoryFilter(): HistoryOrderFilter {
   const today = new Date()
   const fmt = (d: Date) => {
@@ -245,6 +275,6 @@ export function getDefaultHistoryFilter(): HistoryOrderFilter {
     const day = String(d.getDate()).padStart(2, '0')
     return `${y}-${m}-${day}`
   }
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)
-  return { city: null, hotel: null, start: fmt(start), end: fmt(today), category: null }
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (HISTORY_MAX_DATE_RANGE_DAYS - 1))
+  return { city: null, entity: null, hotel: null, start: fmt(start), end: fmt(today), category: null }
 }

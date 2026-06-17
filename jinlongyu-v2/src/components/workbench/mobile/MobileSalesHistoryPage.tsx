@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useShortageStore } from '../../../store/shortageStore'
 import type {
+  HistoryEntity,
   HistoryFulfillmentKind,
   HistoryHotelGroup,
   HistoryHotelSkuGroup,
@@ -14,9 +15,12 @@ import { PRODUCT_CATEGORY_LABEL, PRODUCT_CATEGORY_ORDER } from '../../../utils/p
 import {
   HISTORY_KIND_LABEL,
   HISTORY_STATUS_LABEL,
+  HISTORY_MAX_DATE_RANGE_DAYS,
+  clampHistoryDateRange,
   filterHistoryOrders,
   getDefaultHistoryFilter,
   getHistoryCities,
+  getHistoryEntities,
   getHistoryHotels,
   getHotelGroupStatus,
   getPoLineFulfillRate,
@@ -103,9 +107,11 @@ function skuGroupToDetail(group: HistorySkuGroup): ActiveDetail {
 
 function HotelCard({
   hotel,
+  detailsExpanded,
   onOpenSku,
 }: {
   hotel: HistoryHotelGroup
+  detailsExpanded: boolean
   onOpenSku: (detail: ActiveDetail) => void
 }) {
   const status = getHotelGroupStatus(hotel)
@@ -125,41 +131,43 @@ function HotelCard({
           {hotel.skuGroups.length} 个缺货品 · 已签收 {hotelLines.signed}/{hotelLines.total}
         </span>
       </div>
-      <ul className="sales-history-card__skus">
-        {hotel.skuGroups.map((sku) => {
-          const { signed: lineSigned, total: lineTotal } = countSignedPoLines(sku.pos)
-          const signedState = getPoLineSignedState(sku.pos)
-          return (
-            <li key={sku.sku} className="sales-history-sku">
-              <button
-                type="button"
-                className="sales-history-sku__btn"
-                onClick={() => onOpenSku(hotelSkuToDetail(hotel.hotelName, sku))}
-              >
-                <span className="sales-history-sku__main">
-                  <span className="sales-history-sku__name">
-                    {formatSkuProductTitle(sku.productName, sku.spec)}
+      {detailsExpanded ? (
+        <ul className="sales-history-card__skus">
+          {hotel.skuGroups.map((sku) => {
+            const { signed: lineSigned, total: lineTotal } = countSignedPoLines(sku.pos)
+            const signedState = getPoLineSignedState(sku.pos)
+            return (
+              <li key={sku.sku} className="sales-history-sku">
+                <button
+                  type="button"
+                  className="sales-history-sku__btn"
+                  onClick={() => onOpenSku(hotelSkuToDetail(hotel.hotelName, sku))}
+                >
+                  <span className="sales-history-sku__main">
+                    <span className="sales-history-sku__name">
+                      {formatSkuProductTitle(sku.productName, sku.spec)}
+                    </span>
+                    <span className="sales-history-sku__sub">
+                      共缺 {sku.totalQty}
+                      {sku.unit} · {sku.poCount} 个 PO
+                    </span>
                   </span>
-                  <span className="sales-history-sku__sub">
-                    共缺 {sku.totalQty}
-                    {sku.unit} · {sku.poCount} 个 PO
+                  <span className="sales-history-sku__right">
+                    <span
+                      className={`sales-history-sku__signed sales-history-sku__signed--${signedState}`}
+                    >
+                      已签 {lineSigned}/{lineTotal}
+                    </span>
+                    <span className="sales-history-sku__chevron" aria-hidden>
+                      ›
+                    </span>
                   </span>
-                </span>
-                <span className="sales-history-sku__right">
-                  <span
-                    className={`sales-history-sku__signed sales-history-sku__signed--${signedState}`}
-                  >
-                    已签 {lineSigned}/{lineTotal}
-                  </span>
-                  <span className="sales-history-sku__chevron" aria-hidden>
-                    ›
-                  </span>
-                </span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
     </li>
   )
 }
@@ -193,7 +201,7 @@ function SkuOverviewCard({
         </span>
         <span className="sales-history-sku__right">
           <span className="sales-history-sku-card__rate">
-            {rate}%<span className="sales-history-sku-card__rate-label">完成率</span>
+            {rate}%<span className="sales-history-sku-card__rate-label">订单行完成率</span>
           </span>
           <span
             className={`sales-history-sku__signed sales-history-sku__signed--${signedState}`}
@@ -330,6 +338,12 @@ const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const toDateKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(d)}`
 
+function addDaysToKey(dateKey: string, days: number): string {
+  const d = new Date(`${dateKey}T00:00:00`)
+  d.setDate(d.getDate() + days)
+  return toDateKey(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
 function buildMonths(monthsBack: number) {
   const today = new Date()
   const list: { year: number; month: number }[] = []
@@ -358,6 +372,10 @@ function SalesHistoryDatePicker({
     const t = new Date()
     return toDateKey(t.getFullYear(), t.getMonth(), t.getDate())
   }, [])
+  const maxEndKey = useMemo(
+    () => (draftStart ? addDaysToKey(draftStart, HISTORY_MAX_DATE_RANGE_DAYS - 1) : null),
+    [draftStart],
+  )
 
   const handleDayTap = (key: string) => {
     if (!draftStart || (draftStart && draftEnd)) {
@@ -365,8 +383,10 @@ function SalesHistoryDatePicker({
       setDraftEnd('')
     } else if (key < draftStart) {
       setDraftStart(key)
+      setDraftEnd('')
     } else {
-      setDraftEnd(key)
+      const { end } = clampHistoryDateRange(draftStart, key)
+      setDraftEnd(end)
     }
   }
 
@@ -416,17 +436,23 @@ function SalesHistoryDatePicker({
                     const inRange =
                       Boolean(draftStart && draftEnd) && key > draftStart && key < draftEnd
                     const isFuture = key > todayKey
+                    const pickingEnd = Boolean(draftStart && !draftEnd)
+                    const isBeforeStart = pickingEnd && key < draftStart
+                    const isBeyondMaxRange =
+                      pickingEnd && maxEndKey != null && key > maxEndKey
                     const classNames = ['sales-date-picker__cell', 'sales-date-picker__day']
                     if (isStart) classNames.push('sales-date-picker__day--start')
                     if (isEnd) classNames.push('sales-date-picker__day--end')
                     if (inRange) classNames.push('sales-date-picker__day--in-range')
-                    if (isFuture) classNames.push('sales-date-picker__day--disabled')
+                    if (isFuture || isBeforeStart || isBeyondMaxRange) {
+                      classNames.push('sales-date-picker__day--disabled')
+                    }
                     return (
                       <button
                         key={key}
                         type="button"
                         className={classNames.join(' ')}
-                        disabled={isFuture}
+                        disabled={isFuture || isBeforeStart || isBeyondMaxRange}
                         onClick={() => handleDayTap(key)}
                       >
                         <span className="sales-date-picker__day-num">{day}</span>
@@ -442,17 +468,26 @@ function SalesHistoryDatePicker({
         </div>
 
         <footer className="sales-date-picker__footer">
-          <div className="sales-date-picker__summary">
-            <span>起 {draftStart ? draftStart.slice(5) : '--'}</span>
-            <span>止 {draftEnd ? draftEnd.slice(5) : '--'}</span>
-          </div>
-          <button
+          <p className="sales-date-picker__range-notice">
+            日期区间最长不超过 {HISTORY_MAX_DATE_RANGE_DAYS} 天
+          </p>
+          <div className="sales-date-picker__footer-actions">
+            <div className="sales-date-picker__summary">
+              <span>起 {draftStart ? draftStart.slice(5) : '--'}</span>
+              <span>止 {draftEnd ? draftEnd.slice(5) : '--'}</span>
+            </div>
+            <button
             type="button"
             className="sales-date-picker__confirm"
-            onClick={() => onConfirm(draftStart, draftEnd)}
+            disabled={!draftStart || !draftEnd}
+            onClick={() => {
+              const { start: nextStart, end: nextEnd } = clampHistoryDateRange(draftStart, draftEnd)
+              onConfirm(nextStart, nextEnd)
+            }}
           >
             确定
           </button>
+          </div>
         </footer>
       </div>
     </div>
@@ -465,17 +500,19 @@ export function MobileSalesHistoryPage() {
   const closeProcurementOverview = useShortageStore((s) => s.closeProcurementOverview)
   const closeWorkbench = useShortageStore((s) => s.closeWorkbench)
   const [filter, setFilter] = useState<HistoryOrderFilter>(getDefaultHistoryFilter)
+  const [filterStep, setFilterStep] = useState<1 | 2 | 3>(1)
+  const [allDetailsExpanded, setAllDetailsExpanded] = useState(false)
   const [dateOpen, setDateOpen] = useState(false)
   const [activeDetail, setActiveDetail] = useState<ActiveDetail | null>(null)
 
   // 销售：子页（标题「历史订单查询」，返回对话，城市→酒店→品→PO）
-  // 运营：落地页，复用销售同款视图，仅标题改「缺货品数据总览」
+  // 运营：落地页，复用销售同款视图，标题为「履约数据总览」
   // 采购：落地页，只关注品，按「品(SKU)」全局聚合，无酒店维度、无城市筛选
   const isProcurement = role === 'procurement'
-  const pageTitle = role === 'sales' ? '历史订单查询' : '缺货品数据总览'
+  const pageTitle = role === 'sales' ? '历史订单查询' : '履约数据总览'
   const pageMeta = isProcurement
     ? '按城市 / 品类 / 品查看缺货履约总情况'
-    : '按城市 / 酒店 / 收货日期查看履约情况'
+    : '按城市 / 主体 / 酒店 / 收货日期查看过往履约情况'
   // 销售/采购为对话内子页（返回上一级），运营为落地页（返回角色选择）
   const onBack = isProcurement
     ? closeProcurementOverview
@@ -484,7 +521,11 @@ export function MobileSalesHistoryPage() {
       : closeWorkbench
 
   const cities = useMemo(() => getHistoryCities(), [])
-  const hotels = useMemo(() => getHistoryHotels(filter.city), [filter.city])
+  const entities = useMemo(() => getHistoryEntities(filter.city), [filter.city])
+  const hotels = useMemo(
+    () => getHistoryHotels(filter.city, filter.entity),
+    [filter.city, filter.entity],
+  )
 
   const orders = useMemo(() => filterHistoryOrders(filter), [filter])
   const hotelGroups = useMemo(() => groupHistoryByHotel(orders), [orders])
@@ -557,7 +598,10 @@ export function MobileSalesHistoryPage() {
               <select
                 className="sales-history-city-select"
                 value={filter.city ?? ''}
-                onChange={(e) => patch({ city: e.target.value || null, hotel: null })}
+                onChange={(e) => {
+                  patch({ city: e.target.value || null, entity: null, hotel: null })
+                  setFilterStep(2)
+                }}
                 aria-label="城市"
               >
                 <option value="">全国</option>
@@ -581,12 +625,37 @@ export function MobileSalesHistoryPage() {
             </button>
           </div>
 
-          {!isProcurement && filter.city !== null ? (
-            <label className="sales-history-field">
-              <span>酒店</span>
+          {!isProcurement && filterStep >= 2 ? (
+            <div className="sales-history-filters__row">
               <select
+                className="sales-history-city-select"
+                value={filter.entity ?? ''}
+                onChange={(e) => {
+                  patch({
+                    entity: (e.target.value || null) as HistoryEntity | null,
+                    hotel: null,
+                  })
+                  setFilterStep(3)
+                }}
+                aria-label="主体"
+              >
+                <option value="">全部主体</option>
+                {entities.map((entity) => (
+                  <option key={entity} value={entity}>
+                    {entity}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {!isProcurement && filterStep >= 3 ? (
+            <div className="sales-history-filters__row">
+              <select
+                className="sales-history-city-select"
                 value={filter.hotel ?? ''}
                 onChange={(e) => patch({ hotel: e.target.value || null })}
+                aria-label="酒店"
               >
                 <option value="">全部酒店</option>
                 {hotels.map((hotel) => (
@@ -595,29 +664,29 @@ export function MobileSalesHistoryPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
           ) : null}
         </section>
 
         <div className="sales-history-summary-block">
           <SummaryDimensionHeading
-            title="SKU 维度"
-            tip="所有酒店的所有 PO 的同一个品计 1 个 SKU；该品下全部 PO 订单行均已签收才算已履约。履约完成率 = 已履约 SKU 数 ÷ 缺货 SKU 数"
+            title="商品维度"
+            tip="所有酒店的所有 PO 的同一个品计 1 个商品；该品下全部 PO 订单行均已签收才算已履约。履约完成率 = 已履约商品数 ÷ 缺货商品数"
           />
-          <section className="sales-history-summary" aria-label="SKU 维度统计">
+          <section className="sales-history-summary" aria-label="商品维度统计">
             <div className="sales-history-summary__item">
               <strong>
                 {summary.skuCount}
                 <span className="sales-history-summary__unit">个</span>
               </strong>
-              <span>缺货 SKU</span>
+              <span>缺货商品数</span>
             </div>
             <div className="sales-history-summary__item">
               <strong>
                 {summary.skuFulfilledCount}
                 <span className="sales-history-summary__unit">个</span>
               </strong>
-              <span>已履约 SKU</span>
+              <span>已履约商品数</span>
             </div>
             <div className="sales-history-summary__item">
               <strong>{summary.skuFulfillRate}%</strong>
@@ -660,11 +729,45 @@ export function MobileSalesHistoryPage() {
         ) : hotelGroups.length === 0 ? (
           <p className="sales-history-empty">该筛选条件下暂无历史订单。</p>
         ) : (
-          <ul className="sales-history-list">
-            {hotelGroups.map((hotel) => (
-              <HotelCard key={hotel.hotelName} hotel={hotel} onOpenSku={setActiveDetail} />
-            ))}
-          </ul>
+          <>
+            <div className="sales-history-list-toolbar">
+              <span className="sales-history-list-toolbar__label">
+                共 {hotelGroups.length} 家酒店
+              </span>
+              <div
+                className={`sales-history-expand-touch${allDetailsExpanded ? ' sales-history-expand-touch--expanded' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-expanded={allDetailsExpanded}
+                aria-label={allDetailsExpanded ? '全部收起缺货品' : '全部展开缺货品'}
+                onClick={() => setAllDetailsExpanded((v) => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setAllDetailsExpanded((v) => !v)
+                  }
+                }}
+              >
+                <span className="sales-history-expand-touch__label">
+                  {allDetailsExpanded ? '全部收起' : '全部展开'}
+                </span>
+                <span className="sales-history-expand-touch__chevrons" aria-hidden>
+                  <span className="sales-history-expand-touch__chevron" />
+                  <span className="sales-history-expand-touch__chevron" />
+                </span>
+              </div>
+            </div>
+            <ul className="sales-history-list">
+              {hotelGroups.map((hotel) => (
+                <HotelCard
+                  key={hotel.hotelName}
+                  hotel={hotel}
+                  detailsExpanded={allDetailsExpanded}
+                  onOpenSku={setActiveDetail}
+                />
+              ))}
+            </ul>
+          </>
         )}
       </div>
 
@@ -674,7 +777,8 @@ export function MobileSalesHistoryPage() {
           end={filter.end}
           onClose={() => setDateOpen(false)}
           onConfirm={(start, end) => {
-            patch({ start, end })
+            const { start: nextStart, end: nextEnd } = clampHistoryDateRange(start, end)
+            patch({ start: nextStart, end: nextEnd })
             setDateOpen(false)
           }}
         />

@@ -33,6 +33,7 @@ import { SALES_HOTEL_CMD_PREFIX, salesHotelReplyForCommand } from '../utils/mobi
 import {
   applyBackendLogisticsRouting,
   ensureLineSuppliers,
+  getLinesAwaitingSupplierPoSubmit,
   recomputeLineStatus,
   type ProcurementListSort,
 } from '../utils/shortageAggregations'
@@ -100,6 +101,7 @@ export interface ShortageState {
   loadTodayShortages: () => void
   submitProcurementLine: (lineId: string, payload: SubmitProcurementPayload) => void
   submitProcurementSkuBatch: (payload: SubmitProcurementSkuBatchPayload) => boolean
+  submitSupplierProcurementBatch: (supplierName: string) => boolean
   submitOaApproval: (lineId: string) => void
   submitOaApprovalBatch: (lineIds: string[], productName: string, options?: { silent?: boolean }) => void
   receiveOaApproval: (lineId: string, status: 'approved' | 'rejected') => void
@@ -447,7 +449,6 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
     }
 
     let orders = get().orders
-    const satisfiedLineIds: string[] = []
     let productName = ''
     const notifiedAt = new Date().toISOString()
 
@@ -500,9 +501,12 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
         deliveryMethod: row.deliveryMethod ?? 'warehouse',
         logisticsTrackingNo:
           row.deliveryMethod === 'direct' ? (row.logisticsTrackingNo?.trim() ?? '') : '',
+        oaApprovalStatus: 'none',
+        oaRequestNo: '',
+        procurementDraftNo: '',
+        procurementConfirmed: false,
         salesProcurementNotifiedAt: notifiedAt,
       })
-      satisfiedLineIds.push(row.lineId)
     }
 
     set({ orders })
@@ -510,13 +514,44 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
     get().pushActivity({
       actor: '采购',
       type: 'procurement',
-      content: `${productName} · 涉及 ${rows.length} 个酒店 PO 已处理`,
+      content: `${productName} · 缺货处理信息已提交（${rows.length} 个酒店 PO），待按供应商发起采购`,
       ref: { sku },
     })
+    get().setToast('缺货处理信息已提交，请右滑至「提交采购订单」继续')
 
-    if (satisfiedLineIds.length > 0) {
-      get().submitOaApprovalBatch(satisfiedLineIds, productName, { silent: true })
+    return true
+  },
+
+  submitSupplierProcurementBatch: (supplierName) => {
+    const trimmed = supplierName.trim()
+    const awaiting = getLinesAwaitingSupplierPoSubmit(get().orders).filter(
+      (line) => line.supplierName?.trim() === trimmed
+    )
+    if (awaiting.length === 0) {
+      get().setToast('该供应商暂无待提交的缺货处理')
+      return false
     }
+
+    const urgentIds: string[] = []
+    const deferIds: string[] = []
+    for (const line of awaiting) {
+      if (line.procurementOutcome === 'satisfied') urgentIds.push(line.id)
+      else deferIds.push(line.id)
+    }
+
+    if (urgentIds.length > 0) {
+      get().submitOaApprovalBatch(urgentIds, trimmed, { silent: false })
+    }
+
+    for (const lineId of deferIds) {
+      get().confirmProcurementToErp(lineId)
+    }
+
+    get().pushActivity({
+      actor: '采购',
+      type: 'procurement',
+      content: `${trimmed}：已提交采购订单与 OA（${awaiting.length} 个酒店 PO · ${new Set(awaiting.map((l) => l.sku)).size} 个品）`,
+    })
 
     return true
   },

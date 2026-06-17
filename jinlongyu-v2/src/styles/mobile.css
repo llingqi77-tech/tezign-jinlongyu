@@ -4695,7 +4695,7 @@ button.mobile-sales-hotel-panel__stat:active {
 }
 
 .platform-mobile .mobile-procurement-success-dialog--compact .mobile-procurement-success-dialog__panel {
-  width: min(220px, 78%);
+  width: min(300px, 88%);
   padding: 18px 16px 14px;
   border-radius: 12px;
 }
@@ -4708,9 +4708,17 @@ button.mobile-sales-hotel-panel__stat:active {
 }
 
 .platform-mobile .mobile-procurement-success-dialog--compact .mobile-procurement-success-dialog__title {
-  margin: 0 0 14px;
+  margin: 0 0 8px;
   font-size: 16px;
   font-weight: 600;
+}
+
+.platform-mobile .mobile-procurement-success-dialog__sub {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-muted, #6b7280);
+  text-align: left;
 }
 
 .platform-mobile .mobile-procurement-success-dialog__desc {
@@ -4975,20 +4983,47 @@ button.mobile-sales-hotel-panel__stat:active {
 
 .platform-mobile .sales-date-picker__footer {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.platform-mobile .sales-date-picker__range-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #fff;
+  background: #1f2937;
+  border: none;
+  text-align: center;
+}
+
+.platform-mobile .sales-date-picker__footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .platform-mobile .sales-date-picker__summary {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   flex: 1;
   font-size: 13px;
   font-weight: 600;
   color: var(--color-ink, #1f2937);
+}
+
+.platform-mobile .sales-date-picker__range-hint {
+  flex-basis: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-ink-muted, #6b7280);
 }
 
 .platform-mobile .sales-date-picker__confirm {
@@ -5000,6 +5035,10 @@ button.mobile-sales-hotel-panel__stat:active {
   border: none;
   border-radius: 999px;
   background: linear-gradient(90deg, #ff7a3c 0%, #ff4d00 100%);
+}
+
+.platform-mobile .sales-date-picker__confirm:disabled {
+  opacity: 0.45;
 }
 
 .platform-mobile .sales-history-field-row {
@@ -5126,6 +5165,71 @@ button.mobile-sales-hotel-panel__stat:active {
   font-size: 11px;
   font-weight: 600;
   color: #e64500;
+}
+
+.platform-mobile .sales-history-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding: 4px 2px 8px;
+}
+
+.platform-mobile .sales-history-list-toolbar__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-muted, #6b7280);
+}
+
+/* 触屏文字链 + 双箭头，无按钮边框 */
+.platform-mobile .sales-history-expand-touch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 2px 10px 20px;
+  margin: -10px -2px -10px 0;
+  color: #e64500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.platform-mobile .sales-history-expand-touch:active {
+  opacity: 0.45;
+}
+
+.platform-mobile .sales-history-expand-touch__label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.platform-mobile .sales-history-expand-touch__chevrons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 14px;
+  height: 14px;
+}
+
+.platform-mobile .sales-history-expand-touch__chevron {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #e64500;
+}
+
+.platform-mobile .sales-history-expand-touch--expanded .sales-history-expand-touch__chevron {
+  border-top: none;
+  border-bottom: 5px solid #e64500;
 }
 
 .platform-mobile .sales-history-list {
@@ -5407,9 +5511,10 @@ button.mobile-sales-hotel-panel__stat:active {
 }
 
 .platform-mobile .sales-history-sku-card__rate-label {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 9px;
+  font-weight: 600;
   color: var(--color-muted, #8a8a8a);
+  white-space: nowrap;
 }
 
 .platform-mobile .sales-po-card__hotel {
@@ -5496,4 +5601,321 @@ button.mobile-sales-hotel-panel__stat:active {
   text-align: center;
   font-size: 13px;
   color: var(--color-muted, #8a8a8a);
+}
+
+/* 采购：缺货采购处理 Pipeline + 左右滑动 */
+.platform-mobile .mobile-procurement-pipeline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 8px;
+}
+
+.platform-mobile .mobile-procurement-pipeline__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.platform-mobile .mobile-procurement-pipeline__step--active {
+  border-color: rgba(255, 77, 0, 0.28);
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+}
+
+.platform-mobile .mobile-procurement-pipeline__step--current {
+  border-color: rgba(255, 77, 0, 0.35);
+}
+
+.platform-mobile .mobile-procurement-pipeline__step--bottleneck {
+  border-color: var(--color-brand, #ff4d00);
+  background: linear-gradient(180deg, #fff5f0 0%, #ffffff 100%);
+  box-shadow:
+    0 0 0 2px rgba(255, 77, 0, 0.16),
+    0 4px 14px rgba(255, 77, 0, 0.14);
+  animation: mobile-procurement-pipeline-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mobile-procurement-pipeline-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(255, 77, 0, 0.16),
+      0 4px 14px rgba(255, 77, 0, 0.14);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(255, 77, 0, 0.28),
+      0 6px 18px rgba(255, 77, 0, 0.22);
+  }
+}
+
+.platform-mobile .mobile-procurement-pipeline__step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  border-radius: 999px;
+  background: var(--color-brand, #ff4d00);
+}
+
+.platform-mobile .mobile-procurement-pipeline__step--active .mobile-procurement-pipeline__step-index {
+  background: var(--color-brand-dark, #e64500);
+}
+
+.platform-mobile .mobile-procurement-pipeline__step-label {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-ink, #1f2937);
+}
+
+.platform-mobile .mobile-procurement-pipeline__step-count {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-brand-dark, #e64500);
+  border-radius: 999px;
+  background: rgba(255, 77, 0, 0.12);
+  white-space: nowrap;
+}
+
+.platform-mobile .mobile-procurement-pipeline__step-count--urgent {
+  color: #fff;
+  background: linear-gradient(90deg, #ff4d00 0%, #e64500 100%);
+}
+
+.platform-mobile .mobile-procurement-pipeline__step-status {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-muted, #8a8a8a);
+}
+
+.platform-mobile .mobile-procurement-pipeline__connector {
+  position: relative;
+  align-self: center;
+  width: 20px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 77, 0, 0.25) 0%, rgba(255, 77, 0, 0.65) 100%);
+}
+
+.platform-mobile .mobile-procurement-pipeline__connector::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid rgba(255, 77, 0, 0.65);
+  transform: translateY(-50%);
+}
+
+.platform-mobile .mobile-procurement-pipeline__alert {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #fff;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #ff4d00 0%, #e64500 55%, #d63d00 100%);
+  box-shadow: 0 4px 16px rgba(255, 77, 0, 0.38);
+}
+
+.platform-mobile .mobile-procurement-pipeline__alert strong {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.platform-mobile .mobile-procurement-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 10px;
+  margin: 0 -2px;
+  padding: 2px 0 4px;
+}
+
+.platform-mobile .mobile-procurement-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.platform-mobile .mobile-procurement-carousel__pane {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.platform-mobile .mobile-procurement-carousel__dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.platform-mobile .mobile-procurement-carousel__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.16);
+}
+
+.platform-mobile .mobile-procurement-carousel__dot--active {
+  width: 18px;
+  background: var(--color-brand, #ff4d00);
+}
+
+.platform-mobile .mobile-procurement-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 100%;
+}
+
+.platform-mobile .mobile-procurement-pane--highlight {
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 77, 0, 0.22);
+  background: rgba(255, 251, 248, 0.9);
+}
+
+.platform-mobile .mobile-procurement-pane__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.platform-mobile .mobile-procurement-pane__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink, #1f2937);
+}
+
+.platform-mobile .mobile-procurement-pane__badge {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 999px;
+  background: var(--color-brand, #ff4d00);
+  white-space: nowrap;
+}
+
+/* 采购：按供应商提交批次 */
+.platform-mobile .mobile-supplier-batch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.platform-mobile .mobile-supplier-batch-card {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.platform-mobile .mobile-supplier-batch-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.platform-mobile .mobile-supplier-batch-card__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink, #1f2937);
+}
+
+.platform-mobile .mobile-supplier-batch-card__meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-muted, #6b7280);
+}
+
+.platform-mobile .mobile-supplier-batch-card__badge {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #c2410c;
+  background: #fff7ed;
+  border-radius: 6px;
+}
+
+.platform-mobile .mobile-supplier-batch-card__products {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.platform-mobile .mobile-supplier-batch-card__product {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  color: var(--color-ink, #1f2937);
+  background: #f9fafb;
+  border: none;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.platform-mobile .mobile-supplier-batch-card__product:active {
+  background: #f3f4f6;
+}
+
+.platform-mobile .mobile-supplier-batch-card__submit {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #ff7a3c 0%, #ff4d00 100%);
+  border: none;
+  border-radius: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.platform-mobile .mobile-supplier-batch-card__submit:active {
+  opacity: 0.88;
 }

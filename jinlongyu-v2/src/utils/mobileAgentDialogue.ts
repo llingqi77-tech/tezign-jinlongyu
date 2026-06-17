@@ -163,18 +163,19 @@ export function sendSalesHotelPanelAction(userLabel: string, command: string) {
 
 export function sendProcurementTaskListPanelAction(
   userLabel: string,
-  sort: 'delivery' | 'oa'
+  sort: 'delivery' | 'supplier' | 'oa'
 ) {
   const state = useShortageStore.getState()
   if (state.mobileOnboardingPhase !== 'ready') return
 
-  state.setMobileProcurementQuickView(sort)
+  const view = sort === 'supplier' ? 'delivery' : sort
+  state.setMobileProcurementQuickView(view)
   void userLabel
   state.replaceMobileChat({
     side: 'agent',
     content: '',
     kind: 'procurement_task_list_panel',
-    meta: { procurementListSort: sort },
+    meta: { procurementListSort: view },
     stream: false,
   })
   state.bumpMobileChatScrollToTop()
@@ -202,7 +203,7 @@ export function handleMobileUserMessage(text: string): DialogueResult {
     if (reply) return { replies: [{ text: reply.text, salesHotelPanel: reply.panel }] }
   }
 
-  if (/数据大盘|打开大盘|大盘|缺货品履约数据|履约数据/.test(trimmed)) {
+  if (/数据大盘|打开大盘|大盘|缺货品履约数据|履约数据总览|履约数据/.test(trimmed)) {
     const reply = fulfillmentReplyForCommand(`${FULFILLMENT_CMD_PREFIX}open`, store.orders)
     if (reply) return { replies: [{ text: reply.text, fulfillmentPanel: reply.panel }] }
     return { replies: ['今日暂无缺货品项。'] }

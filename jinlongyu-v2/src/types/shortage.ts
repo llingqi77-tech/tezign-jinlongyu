@@ -306,7 +306,18 @@ export type SalesHotelDataPanelState =
       urgentLines: SalesHotelLineItem[]
     }
 
-export type ProcurementTaskListPanelSort = 'delivery' | 'oa'
+export type ProcurementTaskListPanelSort = 'delivery' | 'supplier' | 'oa'
+
+/** 按供应商聚合、待发起采购订单与 OA 的批次 */
+export interface SupplierProcurementBatch {
+  supplierName: string
+  skuCount: number
+  lineCount: number
+  totalAmount: number
+  productNames: string[]
+  skuGroups: ProcurementSkuGroup[]
+  lineIds: string[]
+}
 
 export type MobileChatMessageKind =
   | 'text'
@@ -511,10 +522,15 @@ export interface HistoryOrderLine {
   supplierName: string
 }
 
+/** 历史订单主体（运营 / 销售筛选） */
+export type HistoryEntity = '丰厨供应链' | '益海嘉里德立安'
+
 /** 销售历史订单（按客户收货日期归档） */
 export interface HistoryOrder {
   id: string
   city: string
+  /** 订单主体 */
+  entity: HistoryEntity
   hotelName: string
   deliveryAddress: string
   /** 收货日期 YYYY-MM-DD */
@@ -587,6 +603,8 @@ export interface HistoryHotelGroup {
 
 export interface HistoryOrderFilter {
   city: string | null
+  /** 主体筛选（运营 / 销售视角）；null 为全部主体 */
+  entity: HistoryEntity | null
   hotel: string | null
   start: string
   end: string

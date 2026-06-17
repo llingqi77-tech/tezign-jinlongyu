@@ -46,7 +46,7 @@ function FulfillmentCategoryDashboard({ categories }: { categories: FulfillmentC
 
   return (
     <div className="mobile-fulfillment-dashboard" role="group" aria-label="品类履约仪表盘">
-      <h3 className="mobile-fulfillment-dashboard__title">缺货品履约数据总览</h3>
+      <h3 className="mobile-fulfillment-dashboard__title">履约数据总览</h3>
       <div className="mobile-fulfillment-dashboard__summary" aria-label="全品类汇总">
         <div className="mobile-fulfillment-dashboard__summary-cell">
           <span className="mobile-fulfillment-dashboard__summary-value">{summary.total}</span>
@@ -229,7 +229,7 @@ export function MobileFulfillmentDataPanel({ panel }: MobileFulfillmentDataPanel
 
   if (panel.level === 'categories') {
     return (
-      <div className="mobile-fulfillment-panel" role="group" aria-label="缺货品履约数据">
+      <div className="mobile-fulfillment-panel" role="group" aria-label="履约数据总览">
         <FulfillmentCategoryDashboard categories={panel.categories} />
       </div>
     )

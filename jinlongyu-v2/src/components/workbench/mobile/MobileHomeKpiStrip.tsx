@@ -34,12 +34,10 @@ export function MobileHomeKpiStrip() {
       <button
         type="button"
         className="mobile-kpi-panel__dashboard-bar"
-        onClick={() =>
-          sendFulfillmentPanelAction('缺货品履约数据', `${FULFILLMENT_CMD_PREFIX}open`)
-        }
-        aria-label="打开缺货品履约数据"
+        onClick={() => sendFulfillmentPanelAction('履约数据总览', `${FULFILLMENT_CMD_PREFIX}open`)}
+        aria-label="打开履约数据总览"
       >
-        缺货品履约数据
+        履约数据总览
       </button>
       <div className="mobile-kpi-panel__row">
         <div className="mobile-kpi-strip">

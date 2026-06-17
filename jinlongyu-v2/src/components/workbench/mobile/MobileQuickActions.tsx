@@ -80,11 +80,11 @@ export function MobileQuickActions() {
                 store.openMobileTaskListSheet()
               } else if (action.kind === 'open_dashboard') {
                 if (role === 'procurement') {
-                  // 采购「缺货品履约数据」打开按品总览整页（非对话内面板）
+                  // 采购「履约数据总览」打开整页总览（非对话内面板）
                   store.openProcurementOverview()
                 } else if (role === 'sales') {
                   store.setMobileSalesQuickView('fulfillment')
-                  sendFulfillmentPanelAction('缺货品履约数据', `${FULFILLMENT_CMD_PREFIX}open`)
+                  sendFulfillmentPanelAction('履约数据总览', `${FULFILLMENT_CMD_PREFIX}open`)
                 }
               } else if (action.kind === 'open_kpi_detail' && action.kpiKind) {
                 store.openMobileKpiDetailSheet(action.kpiKind)

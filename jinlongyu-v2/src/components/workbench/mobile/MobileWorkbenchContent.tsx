@@ -15,7 +15,7 @@ export function MobileWorkbenchContent() {
   if (procurementActiveSku) return <MobileProcurementSkuPage sku={procurementActiveSku} />
   if (role === 'sales' && salesHistoryOpen) return <MobileSalesHistoryPage />
   if (role === 'procurement' && procurementOverviewOpen) return <MobileSalesHistoryPage />
-  // 运营进入即落地到「缺货品数据总览」整页
+  // 运营进入即落地到「履约数据总览」整页
   if (role === 'ops') return <MobileSalesHistoryPage />
   return <MobileAgentHome />
 }
