@@ -104,7 +104,11 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
   const titleId = sortByOa ? 'mobile-task-list-oa-title' : 'mobile-task-list-workflow-title'
 
   const step1Active = taskGroups.length > 0
-  const step2Active = supplierBatches.length > 0
+  const pendingSkuCount = taskGroups.length
+  const pendingOrderCount = useMemo(
+    () => supplierBatches.reduce((sum, batch) => sum + batch.lineCount, 0),
+    [supplierBatches]
+  )
 
   const scrollToSlide = (slide: WorkflowSlide) => {
     const el = carouselRef.current
@@ -153,28 +157,17 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
         <>
           <ProcurementTaskPipeline
             activeSlide={activeSlide}
-            step1Count={taskGroups.length}
-            step2Count={supplierBatches.length}
-            step1Active={step1Active}
-            step2Active={step2Active}
+            pendingSkuCount={pendingSkuCount}
+            pendingOrderCount={pendingOrderCount}
             onSelectSlide={scrollToSlide}
           />
-          {supplierBatches.length > 0 ? (
-            <p className="mobile-procurement-pipeline__alert" role="status">
-              有 <strong>{supplierBatches.length}</strong> 个供应商批次待提交，请右滑或点击上方步骤完成采购订单与
-              OA
-            </p>
-          ) : null}
           <div
             ref={carouselRef}
             className="mobile-procurement-carousel"
             onScroll={handleCarouselScroll}
           >
             <div className="mobile-procurement-carousel__pane">
-              <ProcurementWorkflowPane
-                title="处理缺货信息"
-                badge={taskGroups.length > 0 ? `${taskGroups.length} 品待处理` : undefined}
-              >
+              <ProcurementWorkflowPane title="处理缺货信息">
                 {taskGroups.length > 0 ? (
                   <>
                     <div
@@ -228,11 +221,7 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
               </ProcurementWorkflowPane>
             </div>
             <div className="mobile-procurement-carousel__pane">
-              <ProcurementWorkflowPane
-                title="提交采购订单"
-                badge={supplierBatches.length > 0 ? `${supplierBatches.length} 批待提交` : undefined}
-                highlight={step2Active}
-              >
+              <ProcurementWorkflowPane title="提交采购订单">
                 {supplierBatches.length === 0 ? (
                   <p className="mobile-shortage-home__empty">
                     {step1Active
@@ -330,21 +319,15 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
 
 function ProcurementTaskPipeline({
   activeSlide,
-  step1Count,
-  step2Count,
-  step1Active,
-  step2Active,
+  pendingSkuCount,
+  pendingOrderCount,
   onSelectSlide,
 }: {
   activeSlide: WorkflowSlide
-  step1Count: number
-  step2Count: number
-  step1Active: boolean
-  step2Active: boolean
+  pendingSkuCount: number
+  pendingOrderCount: number
   onSelectSlide: (slide: WorkflowSlide) => void
 }) {
-  const step2Bottleneck = step2Active
-
   return (
     <div className="mobile-procurement-pipeline" role="tablist" aria-label="采购处理流程">
       <button
@@ -353,16 +336,18 @@ function ProcurementTaskPipeline({
         aria-selected={activeSlide === 'shortage'}
         className={`mobile-procurement-pipeline__step${
           activeSlide === 'shortage' ? ' mobile-procurement-pipeline__step--active' : ''
-        }${step1Active && !step2Active ? ' mobile-procurement-pipeline__step--current' : ''}`}
+        }`}
         onClick={() => onSelectSlide('shortage')}
       >
         <span className="mobile-procurement-pipeline__step-index">1</span>
         <span className="mobile-procurement-pipeline__step-label">处理缺货信息</span>
-        {step1Count > 0 ? (
-          <span className="mobile-procurement-pipeline__step-count">{step1Count} 品</span>
-        ) : (
-          <span className="mobile-procurement-pipeline__step-status">已完成</span>
-        )}
+        <span
+          className={`mobile-procurement-pipeline__step-meta${
+            pendingSkuCount > 0 ? ' mobile-procurement-pipeline__step-meta--pending' : ''
+          }`}
+        >
+          {pendingSkuCount > 0 ? `${pendingSkuCount} 品待处理` : '暂无待处理'}
+        </span>
       </button>
       <span className="mobile-procurement-pipeline__connector" aria-hidden />
       <button
@@ -371,20 +356,18 @@ function ProcurementTaskPipeline({
         aria-selected={activeSlide === 'submit'}
         className={`mobile-procurement-pipeline__step${
           activeSlide === 'submit' ? ' mobile-procurement-pipeline__step--active' : ''
-        }${step2Bottleneck ? ' mobile-procurement-pipeline__step--bottleneck' : ''}${
-          step2Active ? ' mobile-procurement-pipeline__step--current' : ''
         }`}
         onClick={() => onSelectSlide('submit')}
       >
         <span className="mobile-procurement-pipeline__step-index">2</span>
         <span className="mobile-procurement-pipeline__step-label">提交采购订单</span>
-        {step2Count > 0 ? (
-          <span className="mobile-procurement-pipeline__step-count mobile-procurement-pipeline__step-count--urgent">
-            {step2Count} 批待提交
-          </span>
-        ) : (
-          <span className="mobile-procurement-pipeline__step-status">待生成</span>
-        )}
+        <span
+          className={`mobile-procurement-pipeline__step-meta${
+            pendingOrderCount > 0 ? ' mobile-procurement-pipeline__step-meta--pending' : ''
+          }`}
+        >
+          {pendingOrderCount > 0 ? `${pendingOrderCount} 单待提交` : '暂无待提交'}
+        </span>
       </button>
     </div>
   )
@@ -392,24 +375,15 @@ function ProcurementTaskPipeline({
 
 function ProcurementWorkflowPane({
   title,
-  badge,
-  highlight,
   children,
 }: {
   title: string
-  badge?: string
-  highlight?: boolean
   children: ReactNode
 }) {
   return (
-    <div
-      className={`mobile-procurement-pane${
-        highlight ? ' mobile-procurement-pane--highlight' : ''
-      }`}
-    >
+    <div className="mobile-procurement-pane">
       <div className="mobile-procurement-pane__head">
         <h3 className="mobile-procurement-pane__title">{title}</h3>
-        {badge ? <span className="mobile-procurement-pane__badge">{badge}</span> : null}
       </div>
       {children}
     </div>
