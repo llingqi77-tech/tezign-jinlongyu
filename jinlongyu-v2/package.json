@@ -2,6 +2,7 @@
   "name": "jinlongyu-fulfillment-agent",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@10.12.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
