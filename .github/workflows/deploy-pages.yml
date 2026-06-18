@@ -38,12 +38,7 @@ jobs:
 
       - name: Install and build
         working-directory: jinlongyu-v2
-        env:
-          GITHUB_PAGES: 'true'
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm exec tsc --noEmit
-          pnpm exec vite build
+        run: pnpm install --frozen-lockfile && pnpm build:pages
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
