@@ -7,7 +7,9 @@
     "dev": "vite",
     "dev:mobile": "vite --host",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "build:pages": "GITHUB_PAGES=true tsc --noEmit && GITHUB_PAGES=true vite build",
+    "preview": "vite preview",
+    "preview:pages": "pnpm build:pages && vite preview --base /tezign-jinlongyu/"
   },
   "dependencies": {
     "react": "^18.3.1",
