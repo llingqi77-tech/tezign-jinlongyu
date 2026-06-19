@@ -1,4 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll'
+import { MobileInfiniteListFooter } from './MobileInfiniteListFooter'
 import { useShortageStore } from '../../../store/shortageStore'
 import type { SalesHotelDataPanelState, SalesHotelLineItem } from '../../../types/shortage'
 import { groupByHotel } from '../../../utils/shortageAggregations'
@@ -135,10 +137,9 @@ function SalesHotelOverviewPanel({
 }) {
   const [expandedHotelKey, setExpandedHotelKey] = useState<string | null>(null)
   const [searchText, setSearchText] = useState('')
-  const [hotelFilter, setHotelFilter] = useState<'processed' | 'pending' | null>(null)
+  const [hotelFilter, setHotelFilter] = useState<'processed' | 'pending'>('pending')
 
   const filteredHotels = useMemo(() => {
-    if (!hotelFilter) return []
     const keyword = searchText.trim()
     const hotels = panel.hotels.filter((row) =>
       hotelFilter === 'processed' ? row.processed : !row.processed
@@ -159,6 +160,24 @@ function SalesHotelOverviewPanel({
 
   const openSalesHistory = useShortageStore((s) => s.openSalesHistory)
 
+  const listResetKey = `${hotelFilter}:${searchText.trim()}`
+  const {
+    visibleCount,
+    hasMore,
+    isLoadingMore,
+    enterFromIndex,
+    sentinelRef,
+    pageIndex,
+    totalPages,
+  } = useInfiniteScroll({
+    totalCount: filteredHotels.length,
+    pageSize: 10,
+    resetKey: listResetKey,
+    loadDelayMs: 900,
+  })
+
+  const visibleHotels = filteredHotels.slice(0, visibleCount)
+
   return (
     <div className="mobile-sales-hotel-panel" role="group" aria-label="按酒店数据总览">
       <div className="mobile-sales-hotel-panel__header">
@@ -178,17 +197,6 @@ function SalesHotelOverviewPanel({
       <div className="mobile-sales-hotel-panel__filters" aria-label="酒店处理状态">
         <button
           type="button"
-          className={`mobile-sales-hotel-panel__stat mobile-sales-hotel-panel__stat--processed${
-            hotelFilter === 'processed' ? ' mobile-sales-hotel-panel__stat--active' : ''
-          }`}
-          onClick={() => openHotelFilter('processed')}
-          aria-pressed={hotelFilter === 'processed'}
-        >
-          <span className="mobile-sales-hotel-panel__stat-value">{panel.processedHotelCount}</span>
-          <span className="mobile-sales-hotel-panel__stat-label">已处理酒店</span>
-        </button>
-        <button
-          type="button"
           className={`mobile-sales-hotel-panel__stat mobile-sales-hotel-panel__stat--pending${
             hotelFilter === 'pending' ? ' mobile-sales-hotel-panel__stat--active' : ''
           }`}
@@ -198,13 +206,20 @@ function SalesHotelOverviewPanel({
           <span className="mobile-sales-hotel-panel__stat-value">{panel.pendingHotelCount}</span>
           <span className="mobile-sales-hotel-panel__stat-label">待处理酒店</span>
         </button>
+        <button
+          type="button"
+          className={`mobile-sales-hotel-panel__stat mobile-sales-hotel-panel__stat--processed${
+            hotelFilter === 'processed' ? ' mobile-sales-hotel-panel__stat--active' : ''
+          }`}
+          onClick={() => openHotelFilter('processed')}
+          aria-pressed={hotelFilter === 'processed'}
+        >
+          <span className="mobile-sales-hotel-panel__stat-value">{panel.processedHotelCount}</span>
+          <span className="mobile-sales-hotel-panel__stat-label">已处理酒店</span>
+        </button>
       </div>
       {panel.hotels.length === 0 ? (
         <p className="mobile-sales-hotel-panel__empty">今日暂无缺货记录。</p>
-      ) : hotelFilter == null ? (
-        <p className="mobile-sales-hotel-panel__empty">
-          点选「已处理酒店」或「待处理酒店」查看对应酒店列表。
-        </p>
       ) : (
         <>
           <label className="mobile-sales-hotel-panel__search">
@@ -226,12 +241,20 @@ function SalesHotelOverviewPanel({
             <p className="mobile-sales-hotel-panel__empty">未找到匹配酒店。</p>
           ) : (
             <ul className="mobile-sales-hotel-panel__list">
-              {filteredHotels.map((row) => {
+              {visibleHotels.map((row, index) => {
                 const isOpen = expandedHotelKey === row.hotelKey
+                const isEntering = index >= enterFromIndex
                 return (
                   <li
                     key={row.hotelKey}
-                    className={`mobile-sales-hotel-panel__item${isOpen ? ' mobile-sales-hotel-panel__item--open' : ''}`}
+                    className={`mobile-sales-hotel-panel__item${isOpen ? ' mobile-sales-hotel-panel__item--open' : ''}${
+                      isEntering ? ' mobile-sales-hotel-panel__item--enter' : ''
+                    }`}
+                    style={
+                      isEntering
+                        ? { animationDelay: `${(index - enterFromIndex) * 0.07}s` }
+                        : undefined
+                    }
                   >
                     <button
                       type="button"
@@ -259,6 +282,18 @@ function SalesHotelOverviewPanel({
                   </li>
                 )
               })}
+              {filteredHotels.length > 10 ? (
+                <MobileInfiniteListFooter
+                  sentinelRef={sentinelRef}
+                  hasMore={hasMore}
+                  isLoadingMore={isLoadingMore}
+                  pageIndex={pageIndex}
+                  totalPages={totalPages}
+                  totalCount={filteredHotels.length}
+                  pageSize={10}
+                  doneLabel={`已加载全部 ${filteredHotels.length} 家酒店`}
+                />
+              ) : null}
             </ul>
           )}
         </>

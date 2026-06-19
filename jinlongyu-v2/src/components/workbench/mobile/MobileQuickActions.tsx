@@ -19,14 +19,15 @@ function isQuickActionActive(
   action: MobileQuickActionItem,
   role: WorkbenchRole,
   procurementQuickView: MobileProcurementQuickView,
-  salesQuickView: MobileSalesQuickView
+  salesQuickView: MobileSalesQuickView,
+  procurementOverviewOpen: boolean
 ): boolean {
   if (role === 'procurement') {
     if (action.kind === 'procurement_sort' && action.procurementSort) {
-      return procurementQuickView === action.procurementSort
+      return !procurementOverviewOpen && procurementQuickView === action.procurementSort
     }
     if (action.kind === 'open_dashboard') {
-      return procurementQuickView === 'fulfillment'
+      return procurementOverviewOpen || procurementQuickView === 'fulfillment'
     }
     return false
   }
@@ -43,6 +44,7 @@ function isQuickActionActive(
 
 export function MobileQuickActions() {
   const role = useShortageStore((s) => s.role)
+  const procurementOverviewOpen = useShortageStore((s) => s.procurementOverviewOpen)
   const procurementQuickView =
     useShortageStore((s) => s.mobileProcurementQuickView) ?? 'delivery'
   const salesQuickView = useShortageStore((s) => s.mobileSalesQuickView) ?? 'hotel_overview'
@@ -57,7 +59,8 @@ export function MobileQuickActions() {
             action,
             role,
             procurementQuickView,
-            salesQuickView
+            salesQuickView,
+            procurementOverviewOpen
           )
           const toggleChip =
             action.kind === 'procurement_sort' ||
@@ -72,6 +75,7 @@ export function MobileQuickActions() {
             onClick={() => {
               const store = useShortageStore.getState()
               if (action.kind === 'procurement_sort' && action.procurementSort) {
+                store.closeProcurementOverview()
                 sendProcurementTaskListPanelAction(action.label, action.procurementSort)
               } else if (action.kind === 'sales_hotel_overview') {
                 store.setMobileSalesQuickView('hotel_overview')

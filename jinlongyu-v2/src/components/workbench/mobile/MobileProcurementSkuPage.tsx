@@ -40,6 +40,16 @@ function formatMargin(value: number): string {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2)
 }
 
+function formatMarginRate(value: number): string {
+  const rounded = Math.round(value * 10) / 10
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}%`
+}
+
+function calcUnitMarginRate(unitPrice: number, unitMargin: number): number | null {
+  if (unitPrice <= 0) return null
+  return (unitMargin / unitPrice) * 100
+}
+
 function marginTone(value: number): 'negative' | 'positive' | 'neutral' {
   if (value < 0) return 'negative'
   if (value > 0) return 'positive'
@@ -159,12 +169,17 @@ export function MobileProcurementSkuPage({ sku }: MobileProcurementSkuPageProps)
     if (!form?.price.trim() || !Number.isFinite(procurementPrice)) return null
     const margins = poRowsByDdl.map((row) => row.unitPrice - procurementPrice)
     if (margins.length === 0) return null
+    const marginRates = poRowsByDdl
+      .map((row) => calcUnitMarginRate(row.unitPrice, row.unitPrice - procurementPrice))
+      .filter((rate): rate is number => rate != null)
     const min = Math.min(...margins)
     const max = Math.max(...margins)
+    const minRate = marginRates.length > 0 ? Math.min(...marginRates) : null
+    const maxRate = marginRates.length > 0 ? Math.max(...marginRates) : null
     const negativeCount = margins.filter((value) => value < 0).length
     const positiveCount = margins.filter((value) => value > 0).length
     const neutralCount = margins.length - negativeCount - positiveCount
-    return { min, max, negativeCount, positiveCount, neutralCount }
+    return { min, max, minRate, maxRate, negativeCount, positiveCount, neutralCount }
   }, [form?.price, poRowsByDdl])
 
   const oaOverlayModel = useMemo(() => {
@@ -215,6 +230,8 @@ export function MobileProcurementSkuPage({ sku }: MobileProcurementSkuPageProps)
           activeForm.price.trim() && Number.isFinite(procurementPrice)
             ? row.unitPrice - procurementPrice
             : null
+        const unitMarginRate =
+          unitMargin != null ? calcUnitMarginRate(row.unitPrice, unitMargin) : null
         return (
           <article key={row.lineId} className="procurement-po-detail-card">
             <div className="procurement-po-detail-card__head">
@@ -254,6 +271,18 @@ export function MobileProcurementSkuPage({ sku }: MobileProcurementSkuPageProps)
                   {unitMargin == null
                     ? '填写采购价后计算'
                     : `¥${formatMargin(unitMargin)}/${row.unit}`}
+                </dd>
+              </div>
+              <div>
+                <dt>毛利率</dt>
+                <dd
+                  className={
+                    unitMarginRate == null
+                      ? undefined
+                      : marginClassName('procurement-po-detail-card__margin', unitMarginRate)
+                  }
+                >
+                  {unitMarginRate == null ? '填写采购价后计算' : formatMarginRate(unitMarginRate)}
                 </dd>
               </div>
             </dl>
@@ -484,16 +513,36 @@ export function MobileProcurementSkuPage({ sku }: MobileProcurementSkuPageProps)
                   aria-live="polite"
                   onClick={() => setDetailPageOpen(true)}
                 >
-                  <span className="procurement-sku-margin__label">
-                    PO 毛利范围（最低 ~ 最高）
-                  </span>
-                  <strong>
-                    ¥{formatMargin(marginSummary.min)}
-                    {marginSummary.min === marginSummary.max
-                      ? ''
-                      : ` ~ ¥${formatMargin(marginSummary.max)}`}
-                    /{group.unit}
-                  </strong>
+                  <div className="procurement-sku-margin__metrics">
+                    <div className="procurement-sku-margin__metric">
+                      <span className="procurement-sku-margin__label">
+                        PO 毛利范围（最低 ~ 最高）
+                      </span>
+                      <strong>
+                        ¥{formatMargin(marginSummary.min)}
+                        {marginSummary.min === marginSummary.max
+                          ? ''
+                          : ` ~ ¥${formatMargin(marginSummary.max)}`}
+                        /{group.unit}
+                      </strong>
+                    </div>
+                    {marginSummary.minRate != null && marginSummary.maxRate != null ? (
+                      <>
+                        <span className="procurement-sku-margin__split" aria-hidden />
+                        <div className="procurement-sku-margin__metric">
+                          <span className="procurement-sku-margin__label">
+                            PO 毛利率范围（最低 ~ 最高）
+                          </span>
+                          <strong>
+                            {formatMarginRate(marginSummary.minRate)}
+                            {marginSummary.minRate === marginSummary.maxRate
+                              ? ''
+                              : ` ~ ${formatMarginRate(marginSummary.maxRate)}`}
+                          </strong>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                   <span className="procurement-sku-margin__hint">
                     {marginSummary.negativeCount} 个负毛利 · {marginSummary.positiveCount}{' '}
                     个正毛利

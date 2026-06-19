@@ -5,6 +5,7 @@ import type {
   SalesHotelOverviewRow,
   ShortagePO,
 } from '../types/shortage'
+import { mergeOverviewHotelsForDemo } from '../mocks/salesHotelOverviewDemo'
 import { countTodayShortageLines, groupByHotel } from './shortageAggregations'
 
 export const SALES_HOTEL_CMD_PREFIX = '__sales_hotel__:'
@@ -62,14 +63,15 @@ export function buildSalesHotelPanelState(
   orders: ShortagePO[]
 ): SalesHotelDataPanelState | null {
   const groups = groupByHotel(orders)
-  const hotels = groups.map(toOverviewRow)
+  const realHotels = groups.map(toOverviewRow)
+  const hotels = mergeOverviewHotelsForDemo(realHotels)
   const processedHotelCount = hotels.filter((hotel) => hotel.processed).length
 
   if (command === `${SALES_HOTEL_CMD_PREFIX}open` || command === `${SALES_HOTEL_CMD_PREFIX}back`) {
     return {
       level: 'overview',
       skuCount: countTodayShortageLines(orders, new Date(), 'sales'),
-      hotelCount: groups.length,
+      hotelCount: hotels.length,
       processedHotelCount,
       pendingHotelCount: hotels.length - processedHotelCount,
       hotels,

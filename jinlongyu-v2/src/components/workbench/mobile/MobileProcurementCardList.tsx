@@ -16,6 +16,7 @@ import {
 import type { ProcurementSkuGroup, ProductCategoryKey, SupplierProcurementBatch } from '../../../types/shortage'
 import { formatSkuProductTitle } from '../../../utils/productDisplay'
 import { groupItemsByProductCategory } from '../../../utils/productCategory'
+import { MobileSwipePaginatedList } from './MobileSwipePaginatedList'
 
 const OA_TABS: { id: Exclude<ProcurementSkuOaBucket, 'none'>; label: string }[] = [
   { id: 'rejected', label: '已驳回' },
@@ -166,7 +167,11 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
             className="mobile-procurement-carousel"
             onScroll={handleCarouselScroll}
           >
-            <div className="mobile-procurement-carousel__pane">
+            <div
+              className={`mobile-procurement-carousel__pane${
+                activeSlide === 'shortage' ? ' mobile-procurement-carousel__pane--active' : ''
+              }`}
+            >
               <ProcurementWorkflowPane title="处理缺货信息">
                 {taskGroups.length > 0 ? (
                   <>
@@ -196,8 +201,15 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
                       ))}
                     </div>
                     {displayGroups.length > 0 ? (
-                      <ol className="mobile-home-task-list">
-                        {displayGroups.map((g, index) => (
+                      <MobileSwipePaginatedList
+                        listTag="ol"
+                        listClassName="mobile-home-task-list"
+                        items={displayGroups}
+                        resetKey={`${activeCategory?.key ?? 'none'}:${displayGroups.length}`}
+                        getItemKey={(g) => g.sku}
+                        doneLabel={(total) => `已加载全部 ${total} 个品项`}
+                      >
+                        {(g, index) => (
                           <ProcurementTaskListItem
                             key={g.sku}
                             group={g}
@@ -211,8 +223,8 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
                               })
                             }
                           />
-                        ))}
-                      </ol>
+                        )}
+                      </MobileSwipePaginatedList>
                     ) : null}
                   </>
                 ) : (
@@ -220,7 +232,11 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
                 )}
               </ProcurementWorkflowPane>
             </div>
-            <div className="mobile-procurement-carousel__pane">
+            <div
+              className={`mobile-procurement-carousel__pane${
+                activeSlide === 'submit' ? ' mobile-procurement-carousel__pane--active' : ''
+              }`}
+            >
               <ProcurementWorkflowPane title="提交采购订单">
                 {supplierBatches.length === 0 ? (
                   <p className="mobile-shortage-home__empty">
@@ -229,8 +245,15 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
                       : '填写并提交各品缺货信息后，将按供应商合并显示在此。'}
                   </p>
                 ) : (
-                  <ol className="mobile-supplier-batch-list">
-                    {supplierBatches.map((batch) => (
+                  <MobileSwipePaginatedList
+                    listTag="ol"
+                    listClassName="mobile-supplier-batch-list"
+                    items={supplierBatches}
+                    resetKey={supplierBatches.length}
+                    getItemKey={(batch) => batch.supplierName}
+                    doneLabel={(total) => `已加载全部 ${total} 个供应商批次`}
+                  >
+                    {(batch) => (
                       <SupplierBatchCard
                         key={batch.supplierName}
                         batch={batch}
@@ -242,8 +265,8 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
                           })
                         }
                       />
-                    ))}
-                  </ol>
+                    )}
+                  </MobileSwipePaginatedList>
                 )}
               </ProcurementWorkflowPane>
             </div>
@@ -285,8 +308,15 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
         sortedGroups.length === 0 ? (
           <p className="mobile-shortage-home__empty">{activeTabLabel}暂无已提交品项。</p>
         ) : (
-          <ol className="mobile-home-task-list">
-            {sortedGroups.map((g, index) => (
+          <MobileSwipePaginatedList
+            listTag="ol"
+            listClassName="mobile-home-task-list"
+            items={sortedGroups}
+            resetKey={`${oaTab}:${sortedGroups.length}`}
+            getItemKey={(g) => g.sku}
+            doneLabel={(total) => `已加载全部 ${total} 个品项`}
+          >
+            {(g, index) => (
               <ProcurementTaskListItem
                 key={g.sku}
                 group={g}
@@ -309,8 +339,8 @@ export function MobileProcurementCardList({ sortOverride }: MobileProcurementCar
                   })
                 }}
               />
-            ))}
-          </ol>
+            )}
+          </MobileSwipePaginatedList>
         )
       ) : null}
     </section>
@@ -419,7 +449,13 @@ function SupplierBatchCard({
               className="mobile-supplier-batch-card__product"
               onClick={() => onOpenSku(g.sku)}
             >
-              {formatSkuProductTitle(g.productName, g.spec)}
+              <span className="mobile-supplier-batch-card__product-name">
+                {formatSkuProductTitle(g.productName, g.spec)}
+              </span>
+              <span className="mobile-supplier-batch-card__product-gap">
+                缺 {g.totalGap}
+                {g.unit}
+              </span>
             </button>
           </li>
         ))}

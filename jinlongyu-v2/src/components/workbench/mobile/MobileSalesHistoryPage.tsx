@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useShortageStore } from '../../../store/shortageStore'
 import type {
-  HistoryEntity,
   HistoryFulfillmentKind,
+  HistoryEntity,
   HistoryHotelGroup,
   HistoryHotelSkuGroup,
   HistoryOrderFilter,
@@ -20,8 +20,10 @@ import {
   filterHistoryOrders,
   getDefaultHistoryFilter,
   getHistoryCities,
-  getHistoryEntities,
+  getHistoryCityEntityOptions,
+  getHistoryCityEntityValue,
   getHistoryHotels,
+  parseHistoryCityEntityValue,
   getHotelGroupStatus,
   getPoLineFulfillRate,
   getPoLineSignedState,
@@ -31,6 +33,7 @@ import {
   groupHistoryBySku,
   summarizeHistoryOrders,
 } from '../../../utils/salesHistory'
+import { MobileSwipePaginatedList } from './MobileSwipePaginatedList'
 
 const PO_KIND_FILTERS: { value: HistoryFulfillmentKind | null; label: string }[] = [
   { value: null, label: '全部方式' },
@@ -107,11 +110,13 @@ function skuGroupToDetail(group: HistorySkuGroup): ActiveDetail {
 
 function HotelCard({
   hotel,
-  detailsExpanded,
+  expanded,
+  onToggleExpanded,
   onOpenSku,
 }: {
   hotel: HistoryHotelGroup
-  detailsExpanded: boolean
+  expanded: boolean
+  onToggleExpanded: () => void
   onOpenSku: (detail: ActiveDetail) => void
 }) {
   const status = getHotelGroupStatus(hotel)
@@ -121,17 +126,26 @@ function HotelCard({
       <div className="sales-history-card__head">
         <div className="sales-history-card__title-wrap">
           <span className="sales-history-card__hotel">{hotel.hotelName}</span>
+          <span className={`sales-history-card__status sales-history-card__status--${status}`}>
+            {HISTORY_STATUS_LABEL[status]}
+          </span>
         </div>
-        <span className={`sales-history-card__status sales-history-card__status--${status}`}>
-          {HISTORY_STATUS_LABEL[status]}
-        </span>
+        <button
+          type="button"
+          className={`sales-history-card__toggle${expanded ? ' sales-history-card__toggle--expanded' : ''}`}
+          aria-expanded={expanded}
+          aria-label={expanded ? '收起缺货品' : '展开缺货品'}
+          onClick={onToggleExpanded}
+        >
+          <span className="sales-history-card__toggle-icon" aria-hidden />
+        </button>
       </div>
       <div className="sales-history-card__meta">
         <span>
           {hotel.skuGroups.length} 个缺货品 · 已签收 {hotelLines.signed}/{hotelLines.total}
         </span>
       </div>
-      {detailsExpanded ? (
+      {expanded ? (
         <ul className="sales-history-card__skus">
           {hotel.skuGroups.map((sku) => {
             const { signed: lineSigned, total: lineTotal } = countSignedPoLines(sku.pos)
@@ -230,11 +244,11 @@ function SkuPoDetail({ detail, onBack }: { detail: ActiveDetail; onBack: () => v
     })
   }, [detail.pos, kindFilter, signedFilter])
 
-  const hasPoFilter = kindFilter !== null || signedFilter !== 'all'
   const lineCounts = countSignedPoLines(detail.pos)
+  const productTitle = formatSkuProductTitle(detail.productName, detail.spec)
 
   return (
-    <div className="mobile-procurement-page">
+    <div className="mobile-procurement-page mobile-procurement-page--po-detail">
       <header className="mobile-procurement-page__header">
         <button
           type="button"
@@ -246,21 +260,25 @@ function SkuPoDetail({ detail, onBack }: { detail: ActiveDetail; onBack: () => v
         </button>
         <div className="mobile-procurement-page__head-text">
           <h1 className="mobile-procurement-page__title">
-            {formatSkuProductTitle(detail.productName, detail.spec)}
+            {detail.showHotel ? productTitle : detail.subtitle}
           </h1>
-          <p className="mobile-procurement-page__meta">
-            {detail.subtitle} · 共缺 {detail.totalQty}
-            {detail.unit} · 已签收 {lineCounts.signed}/{lineCounts.total}
-          </p>
+          <div className="mobile-procurement-page__meta-stack">
+            {!detail.showHotel ? (
+              <p className="mobile-procurement-page__meta mobile-procurement-page__meta--primary">
+                {productTitle}
+              </p>
+            ) : null}
+            <p className="mobile-procurement-page__meta mobile-procurement-page__meta--stats">
+              共缺 <strong>{detail.totalQty}{detail.unit}</strong> · 已签{' '}
+              <strong>
+                {lineCounts.signed}/{lineCounts.total}
+              </strong>
+            </p>
+          </div>
         </div>
       </header>
 
       <div className="mobile-procurement-page__body">
-        <p className="sales-po-hint">
-          {hasPoFilter
-            ? `显示 ${filteredPos.length} / ${detail.poCount} 个 PO（按收货日期倒序）`
-            : `该品在筛选范围内关联 ${detail.poCount} 个 PO（按收货日期倒序）`}
-        </p>
         <div className="sales-po-filters">
           <select
             className="sales-history-city-select"
@@ -296,35 +314,44 @@ function SkuPoDetail({ detail, onBack }: { detail: ActiveDetail; onBack: () => v
         ) : (
           <ul className="sales-po-list">
             {filteredPos.map((po, i) => (
-            <li key={`${po.poNo}-${i}`} className="sales-po-card">
-              <div className="sales-po-card__head">
-                <span className="sales-po-card__no">
-                  {po.poNo}
-                  {detail.showHotel && po.hotelName ? (
-                    <span className="sales-po-card__hotel">{po.hotelName}</span>
-                  ) : null}
-                </span>
-                <span
-                  className={`sales-history-card__sign${po.signed ? ' sales-history-card__sign--done' : ''}`}
-                >
-                  {po.signed ? '已签收' : '未签收'}
-                </span>
-              </div>
-              <div className="sales-po-card__meta">
-                <span>
-                  {po.signed ? '收货日期' : '预计收货日期'} {po.deliveryDate.slice(5)}
-                </span>
-                <span>·</span>
-                <span className="sales-po-card__qty">
-                  {po.qty}
-                  {detail.unit}
-                </span>
-                <span className={`sales-history-card__tag sales-history-card__tag--${po.kind}`}>
-                  {HISTORY_KIND_LABEL[po.kind]}
-                </span>
-              </div>
-              <p className="sales-po-card__supplier">{po.supplierName}</p>
-            </li>
+              <li key={`${po.poNo}-${i}`} className="sales-po-card">
+                {detail.showHotel && po.hotelName ? (
+                  <p className="sales-po-card__hotel">{po.hotelName}</p>
+                ) : null}
+                <div className="sales-po-card__head">
+                  <span className="sales-po-card__no">{po.poNo}</span>
+                  <span
+                    className={`sales-history-card__sign${po.signed ? ' sales-history-card__sign--done' : ''}`}
+                  >
+                    {po.signed ? '已签收' : '未签收'}
+                  </span>
+                </div>
+                <dl className="sales-po-card__fields">
+                  <div className="sales-po-card__field">
+                    <dt>缺货数量</dt>
+                    <dd>
+                      {po.qty}
+                      {detail.unit}
+                    </dd>
+                  </div>
+                  <div className="sales-po-card__field">
+                    <dt>{po.signed ? '收货日期' : '预计收货日期'}</dt>
+                    <dd>{po.deliveryDate.slice(5)}</dd>
+                  </div>
+                  <div className="sales-po-card__field">
+                    <dt>履约方式</dt>
+                    <dd>
+                      <span className={`sales-history-card__tag sales-history-card__tag--${po.kind}`}>
+                        {HISTORY_KIND_LABEL[po.kind]}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="sales-po-card__field">
+                    <dt>供应商</dt>
+                    <dd>{po.supplierName}</dd>
+                  </div>
+                </dl>
+              </li>
             ))}
           </ul>
         )}
@@ -494,34 +521,146 @@ function SalesHistoryDatePicker({
   )
 }
 
+function HistoryFilterSelect({
+  value,
+  onChange,
+  options,
+  allLabel,
+  ariaLabel,
+}: {
+  value: string | null
+  onChange: (value: string | null) => void
+  options: { value: string; label: string }[]
+  allLabel: string
+  ariaLabel: string
+}) {
+  return (
+    <select
+      className="sales-history-city-select sales-history-city-select--filter"
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value || null)}
+      aria-label={ariaLabel}
+    >
+      <option value="">{allLabel}</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+function HistoryCityEntitySelect({
+  city,
+  entity,
+  cityFilter,
+  onChange,
+}: {
+  city: string | null
+  entity: HistoryEntity | null
+  cityFilter: string | null
+  onChange: (city: string | null, entity: HistoryEntity | null) => void
+}) {
+  const options = useMemo(() => {
+    const all = getHistoryCityEntityOptions()
+    if (!cityFilter) return all
+    return all.filter((opt) => opt.city === cityFilter)
+  }, [cityFilter])
+
+  return (
+    <HistoryFilterSelect
+      value={getHistoryCityEntityValue(city, entity) || null}
+      onChange={(next) => {
+        const parsed = parseHistoryCityEntityValue(next ?? '')
+        onChange(parsed.city, parsed.entity)
+      }}
+      allLabel="全部主体"
+      ariaLabel="城市主体"
+      options={options.map((opt) => ({ value: opt.value, label: opt.label }))}
+    />
+  )
+}
+
+function HistoryCitySelect({
+  cities,
+  value,
+  onChange,
+}: {
+  cities: string[]
+  value: string | null
+  onChange: (city: string | null) => void
+}) {
+  return (
+    <HistoryFilterSelect
+      value={value}
+      onChange={onChange}
+      allLabel="全国"
+      ariaLabel="城市"
+      options={cities.map((city) => ({ value: city, label: city }))}
+    />
+  )
+}
+
+function HistoryCategorySelect({
+  value,
+  onChange,
+}: {
+  value: ProductCategoryKey | null
+  onChange: (category: ProductCategoryKey | null) => void
+}) {
+  return (
+    <HistoryFilterSelect
+      value={value}
+      onChange={(next) => onChange((next || null) as ProductCategoryKey | null)}
+      allLabel="全部品类"
+      ariaLabel="品类"
+      options={PRODUCT_CATEGORY_ORDER.map((key) => ({
+        value: key,
+        label: PRODUCT_CATEGORY_LABEL[key],
+      }))}
+    />
+  )
+}
+
+function HistoryHotelSelect({
+  hotels,
+  value,
+  onChange,
+}: {
+  hotels: string[]
+  value: string | null
+  onChange: (hotel: string | null) => void
+}) {
+  return (
+    <HistoryFilterSelect
+      value={value}
+      onChange={onChange}
+      allLabel="全部酒店"
+      ariaLabel="酒店"
+      options={hotels.map((hotel) => ({ value: hotel, label: hotel }))}
+    />
+  )
+}
+
 export function MobileSalesHistoryPage() {
   const role = useShortageStore((s) => s.role)
+  const salesHistoryOpen = useShortageStore((s) => s.salesHistoryOpen)
   const closeSalesHistory = useShortageStore((s) => s.closeSalesHistory)
-  const closeProcurementOverview = useShortageStore((s) => s.closeProcurementOverview)
-  const closeWorkbench = useShortageStore((s) => s.closeWorkbench)
+  const procurementOverviewOpen = useShortageStore((s) => s.procurementOverviewOpen)
   const [filter, setFilter] = useState<HistoryOrderFilter>(getDefaultHistoryFilter)
   const [filterStep, setFilterStep] = useState<1 | 2 | 3>(1)
-  const [allDetailsExpanded, setAllDetailsExpanded] = useState(false)
   const [dateOpen, setDateOpen] = useState(false)
+  const [expandedHotels, setExpandedHotels] = useState<Set<string>>(() => new Set())
   const [activeDetail, setActiveDetail] = useState<ActiveDetail | null>(null)
 
-  // 销售：子页（标题「历史订单查询」，返回对话，城市→酒店→品→PO）
+  // 销售：子页（标题「历史订单查询」，返回对话，城市→日期→酒店 分步筛选）
   // 运营：落地页，复用销售同款视图，标题为「履约数据总览」
   // 采购：落地页，只关注品，按「品(SKU)」全局聚合，无酒店维度、无城市筛选
   const isProcurement = role === 'procurement'
   const pageTitle = role === 'sales' ? '历史订单查询' : '履约数据总览'
-  const pageMeta = isProcurement
-    ? '按城市 / 品类 / 品查看缺货履约总情况'
-    : '按城市 / 主体 / 酒店 / 收货日期查看过往履约情况'
-  // 销售/采购为对话内子页（返回上一级），运营为落地页（返回角色选择）
-  const onBack = isProcurement
-    ? closeProcurementOverview
-    : role === 'sales'
-      ? closeSalesHistory
-      : closeWorkbench
 
   const cities = useMemo(() => getHistoryCities(), [])
-  const entities = useMemo(() => getHistoryEntities(filter.city), [filter.city])
   const hotels = useMemo(
     () => getHistoryHotels(filter.city, filter.entity),
     [filter.city, filter.entity],
@@ -531,8 +670,41 @@ export function MobileSalesHistoryPage() {
   const hotelGroups = useMemo(() => groupHistoryByHotel(orders), [orders])
   const skuGroups = useMemo(() => groupHistoryBySku(orders), [orders])
   const summary = useMemo(() => summarizeHistoryOrders(orders), [orders])
+  const allHotelsExpanded = useMemo(
+    () => hotelGroups.length > 0 && hotelGroups.every((h) => expandedHotels.has(h.hotelName)),
+    [hotelGroups, expandedHotels],
+  )
+
+  useEffect(() => {
+    setFilter(getDefaultHistoryFilter())
+    setFilterStep(1)
+    setDateOpen(false)
+    setActiveDetail(null)
+    setExpandedHotels(new Set())
+  }, [salesHistoryOpen, procurementOverviewOpen, role])
+
+  useEffect(() => {
+    setExpandedHotels(new Set())
+  }, [hotelGroups.length, filter.city, filter.entity, filter.hotel, filter.start, filter.end])
 
   const patch = (next: Partial<HistoryOrderFilter>) => setFilter((prev) => ({ ...prev, ...next }))
+
+  const toggleAllHotelsExpanded = () => {
+    if (allHotelsExpanded) {
+      setExpandedHotels(new Set())
+      return
+    }
+    setExpandedHotels(new Set(hotelGroups.map((h) => h.hotelName)))
+  }
+
+  const toggleHotelExpanded = (hotelName: string) => {
+    setExpandedHotels((prev) => {
+      const next = new Set(prev)
+      if (next.has(hotelName)) next.delete(hotelName)
+      else next.add(hotelName)
+      return next
+    })
+  }
 
   if (activeDetail) {
     return <SkuPoDetail detail={activeDetail} onBack={() => setActiveDetail(null)} />
@@ -545,127 +717,140 @@ export function MobileSalesHistoryPage() {
 
   return (
     <div className="mobile-procurement-page">
-      <header className="mobile-procurement-page__header">
-        <button
-          type="button"
-          className="mobile-workbench-header__back"
-          onClick={onBack}
-          aria-label="返回"
-        >
-          ‹
-        </button>
-        <div className="mobile-procurement-page__head-text">
-          <h1 className="mobile-procurement-page__title">{pageTitle}</h1>
-          <p className="mobile-procurement-page__meta">{pageMeta}</p>
-        </div>
-      </header>
-
       <div className="mobile-procurement-page__body">
-        <section className="sales-history-filters" aria-label="筛选条件">
-          <div className="sales-history-filters__row">
-            {isProcurement ? (
-              <>
-                <select
-                  className="sales-history-city-select"
-                  value={filter.city ?? ''}
-                  onChange={(e) => patch({ city: e.target.value || null })}
-                  aria-label="城市"
-                >
-                  <option value="">全国</option>
-                  {cities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="sales-history-city-select"
-                  value={filter.category ?? ''}
-                  onChange={(e) =>
-                    patch({ category: (e.target.value || null) as ProductCategoryKey | null })
-                  }
-                  aria-label="品类"
-                >
-                  <option value="">全部品类</option>
-                  {PRODUCT_CATEGORY_ORDER.map((key) => (
-                    <option key={key} value={key}>
-                      {PRODUCT_CATEGORY_LABEL[key]}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : (
-              <select
-                className="sales-history-city-select"
-                value={filter.city ?? ''}
-                onChange={(e) => {
-                  patch({ city: e.target.value || null, entity: null, hotel: null })
-                  setFilterStep(2)
-                }}
-                aria-label="城市"
-              >
-                <option value="">全国</option>
-                {cities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
-            )}
+        <div className="mobile-procurement-page__intro">
+          {role === 'sales' ? (
             <button
               type="button"
-              className={`sales-history-chip sales-history-chip--date${
-                hasDateFilter || dateOpen ? ' sales-history-chip--active' : ''
-              }`}
-              onClick={() => setDateOpen((v) => !v)}
-              aria-expanded={dateOpen}
+              className="mobile-workbench-header__back"
+              onClick={closeSalesHistory}
+              aria-label="返回"
             >
-              <span aria-hidden>📅</span>
-              {dateChipLabel}
+              ‹
             </button>
-          </div>
-
-          {!isProcurement && filterStep >= 2 ? (
-            <div className="sales-history-filters__row">
-              <select
-                className="sales-history-city-select"
-                value={filter.entity ?? ''}
-                onChange={(e) => {
-                  patch({
-                    entity: (e.target.value || null) as HistoryEntity | null,
-                    hotel: null,
-                  })
-                  setFilterStep(3)
-                }}
-                aria-label="主体"
-              >
-                <option value="">全部主体</option>
-                {entities.map((entity) => (
-                  <option key={entity} value={entity}>
-                    {entity}
-                  </option>
-                ))}
-              </select>
-            </div>
           ) : null}
+          <h1 className="mobile-procurement-page__title">{pageTitle}</h1>
+        </div>
 
-          {!isProcurement && filterStep >= 3 ? (
-            <div className="sales-history-filters__row">
-              <select
-                className="sales-history-city-select"
-                value={filter.hotel ?? ''}
-                onChange={(e) => patch({ hotel: e.target.value || null })}
-                aria-label="酒店"
-              >
-                <option value="">全部酒店</option>
-                {hotels.map((hotel) => (
-                  <option key={hotel} value={hotel}>
-                    {hotel}
-                  </option>
-                ))}
-              </select>
+        <section className="sales-history-filters" aria-label="筛选条件">
+          {isProcurement ? (
+            <div
+              className="sales-history-filters__row sales-history-filters__row--steps"
+              aria-label="分步筛选"
+            >
+              <div className="sales-history-filters__steps-track">
+                <div
+                  className={`sales-history-filters__step sales-history-filters__step--city${
+                    filterStep === 1 ? ' sales-history-filters__step--current' : ''
+                  }${filterStep > 1 ? ' sales-history-filters__step--done' : ''}`}
+                >
+                  <HistoryCitySelect
+                    cities={cities}
+                    value={filter.city}
+                    onChange={(city) => {
+                      patch({ city, category: null })
+                      setFilterStep(2)
+                    }}
+                  />
+                </div>
+
+                {filterStep >= 2 ? (
+                  <div
+                    className={`sales-history-filters__step sales-history-filters__step--category${
+                      filterStep === 2 ? ' sales-history-filters__step--current' : ''
+                    }`}
+                  >
+                    <HistoryCategorySelect
+                      value={filter.category}
+                      onChange={(category) => patch({ category })}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="sales-history-filters__date-fixed">
+                <button
+                  type="button"
+                  className={`sales-history-chip sales-history-chip--date${
+                    hasDateFilter || dateOpen ? ' sales-history-chip--active' : ''
+                  }`}
+                  onClick={() => setDateOpen(true)}
+                  aria-expanded={dateOpen}
+                >
+                  <span aria-hidden>📅</span>
+                  {dateChipLabel}
+                </button>
+              </div>
             </div>
-          ) : null}
+          ) : (
+            <div
+              className="sales-history-filters__row sales-history-filters__row--steps"
+              aria-label="分步筛选"
+            >
+              <div className="sales-history-filters__steps-track sales-history-filters__steps-track--stacked">
+                <div
+                  className={`sales-history-filters__step sales-history-filters__step--city${
+                    filterStep === 1 ? ' sales-history-filters__step--current' : ''
+                  }${filterStep > 1 ? ' sales-history-filters__step--done' : ''}`}
+                >
+                  <HistoryCitySelect
+                    cities={cities}
+                    value={filter.city}
+                    onChange={(city) => {
+                      patch({ city, entity: null, hotel: null })
+                      setFilterStep(2)
+                    }}
+                  />
+                </div>
+
+                {filterStep >= 2 ? (
+                  <div
+                    className={`sales-history-filters__step sales-history-filters__step--entity${
+                      filterStep === 2 ? ' sales-history-filters__step--current' : ''
+                    }${filterStep > 2 ? ' sales-history-filters__step--done' : ''}`}
+                  >
+                    <HistoryCityEntitySelect
+                      city={filter.city}
+                      entity={filter.entity}
+                      cityFilter={filter.city}
+                      onChange={(city, entity) => {
+                        patch({ city, entity, hotel: null })
+                        setFilterStep(3)
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                {filterStep >= 3 ? (
+                  <div
+                    className={`sales-history-filters__step sales-history-filters__step--hotel${
+                      filterStep === 3 ? ' sales-history-filters__step--current' : ''
+                    }`}
+                  >
+                    <HistoryHotelSelect
+                      hotels={hotels}
+                      value={filter.hotel}
+                      onChange={(hotel) => patch({ hotel })}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="sales-history-filters__date-fixed">
+                <button
+                  type="button"
+                  className={`sales-history-chip sales-history-chip--date${
+                    hasDateFilter || dateOpen ? ' sales-history-chip--active' : ''
+                  }`}
+                  onClick={() => setDateOpen(true)}
+                  aria-expanded={dateOpen}
+                >
+                  <span aria-hidden>📅</span>
+                  {dateChipLabel}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         <div className="sales-history-summary-block">
@@ -720,11 +905,14 @@ export function MobileSalesHistoryPage() {
           skuGroups.length === 0 ? (
             <p className="sales-history-empty">该筛选条件下暂无缺货品。</p>
           ) : (
-            <ul className="sales-history-list">
-              {skuGroups.map((group) => (
-                <SkuOverviewCard key={group.sku} group={group} onOpen={setActiveDetail} />
-              ))}
-            </ul>
+            <MobileSwipePaginatedList
+              items={skuGroups}
+              resetKey={`${filter.city}:${filter.category}:${filter.start}:${filter.end}:${skuGroups.length}`}
+              getItemKey={(group) => group.sku}
+              doneLabel={(total) => `已加载全部 ${total} 个品项`}
+            >
+              {(group) => <SkuOverviewCard group={group} onOpen={setActiveDetail} />}
+            </MobileSwipePaginatedList>
           )
         ) : hotelGroups.length === 0 ? (
           <p className="sales-history-empty">该筛选条件下暂无历史订单。</p>
@@ -735,21 +923,21 @@ export function MobileSalesHistoryPage() {
                 共 {hotelGroups.length} 家酒店
               </span>
               <div
-                className={`sales-history-expand-touch${allDetailsExpanded ? ' sales-history-expand-touch--expanded' : ''}`}
+                className={`sales-history-expand-touch${allHotelsExpanded ? ' sales-history-expand-touch--expanded' : ''}`}
                 role="button"
                 tabIndex={0}
-                aria-expanded={allDetailsExpanded}
-                aria-label={allDetailsExpanded ? '全部收起缺货品' : '全部展开缺货品'}
-                onClick={() => setAllDetailsExpanded((v) => !v)}
+                aria-expanded={allHotelsExpanded}
+                aria-label={allHotelsExpanded ? '全部收起缺货品' : '全部展开缺货品'}
+                onClick={toggleAllHotelsExpanded}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    setAllDetailsExpanded((v) => !v)
+                    toggleAllHotelsExpanded()
                   }
                 }}
               >
                 <span className="sales-history-expand-touch__label">
-                  {allDetailsExpanded ? '全部收起' : '全部展开'}
+                  {allHotelsExpanded ? '全部收起' : '全部展开'}
                 </span>
                 <span className="sales-history-expand-touch__chevrons" aria-hidden>
                   <span className="sales-history-expand-touch__chevron" />
@@ -757,16 +945,21 @@ export function MobileSalesHistoryPage() {
                 </span>
               </div>
             </div>
-            <ul className="sales-history-list">
-              {hotelGroups.map((hotel) => (
+            <MobileSwipePaginatedList
+              items={hotelGroups}
+              resetKey={`${filter.city}:${filter.entity}:${filter.hotel}:${filter.start}:${filter.end}:${hotelGroups.length}`}
+              getItemKey={(hotel) => hotel.hotelName}
+              doneLabel={(total) => `已加载全部 ${total} 家酒店`}
+            >
+              {(hotel) => (
                 <HotelCard
-                  key={hotel.hotelName}
                   hotel={hotel}
-                  detailsExpanded={allDetailsExpanded}
+                  expanded={expandedHotels.has(hotel.hotelName)}
+                  onToggleExpanded={() => toggleHotelExpanded(hotel.hotelName)}
                   onOpenSku={setActiveDetail}
                 />
-              ))}
-            </ul>
+              )}
+            </MobileSwipePaginatedList>
           </>
         )}
       </div>

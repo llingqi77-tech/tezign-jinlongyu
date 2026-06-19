@@ -189,6 +189,55 @@ export function getHistoryCities(): string[] {
   return [...new Set(MOCK_SALES_HISTORY_ORDERS.map((o) => o.city))]
 }
 
+export function formatHistoryEntityShort(entity: HistoryEntity): string {
+  if (entity === '丰厨供应链') return '丰厨'
+  if (entity === '益海嘉里德立安') return '德立安'
+  return entity
+}
+
+export function formatCityEntityLabel(city: string, entity: HistoryEntity): string {
+  return `${city}-${formatHistoryEntityShort(entity)}`
+}
+
+export type HistoryCityEntityOption = {
+  city: string
+  entity: HistoryEntity
+  label: string
+  value: string
+}
+
+/** 城市-主体组合（如 北京-德立安、上海-丰厨） */
+export function getHistoryCityEntityOptions(): HistoryCityEntityOption[] {
+  const seen = new Set<string>()
+  const options: HistoryCityEntityOption[] = []
+  for (const o of MOCK_SALES_HISTORY_ORDERS) {
+    const value = `${o.city}\x1f${o.entity}`
+    if (seen.has(value)) continue
+    seen.add(value)
+    options.push({
+      city: o.city,
+      entity: o.entity,
+      label: formatCityEntityLabel(o.city, o.entity),
+      value,
+    })
+  }
+  return options.sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'))
+}
+
+export function parseHistoryCityEntityValue(
+  value: string
+): { city: string | null; entity: HistoryEntity | null } {
+  if (!value) return { city: null, entity: null }
+  const [city, entity] = value.split('\x1f')
+  if (!city || !entity) return { city: null, entity: null }
+  return { city, entity: entity as HistoryEntity }
+}
+
+export function getHistoryCityEntityValue(city: string | null, entity: HistoryEntity | null): string {
+  if (!city || !entity) return ''
+  return `${city}\x1f${entity}`
+}
+
 export function getHistoryEntities(city: string | null): HistoryEntity[] {
   const source = city
     ? MOCK_SALES_HISTORY_ORDERS.filter((o) => o.city === city)

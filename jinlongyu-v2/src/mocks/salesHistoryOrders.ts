@@ -4,6 +4,7 @@ import type {
   HistoryOrder,
   HistoryOrderLine,
 } from '../types/shortage'
+import { buildDemoHistoryScrollOrders } from './infiniteScrollDemo'
 
 function addDays(base: Date, days: number): string {
   const d = new Date(base.getFullYear(), base.getMonth(), base.getDate())
@@ -68,7 +69,6 @@ const SUPPLIERS: string[] = [
   '嘉吉投资（中国）供应链',
 ]
 
-/** 确定性伪随机：同一 seed 永远得到同一结果，保证演示数据稳定 */
 function rand(seed: number): number {
   const x = Math.sin(seed * 12.9898) * 43758.5453
   return x - Math.floor(x)
@@ -133,5 +133,5 @@ export const MOCK_SALES_HISTORY_ORDERS: HistoryOrder[] = (() => {
     }
   }
 
-  return out.sort((a, b) => b.deliveryDate.localeCompare(a.deliveryDate))
+  return [...out.sort((a, b) => b.deliveryDate.localeCompare(a.deliveryDate)), ...buildDemoHistoryScrollOrders()]
 })()

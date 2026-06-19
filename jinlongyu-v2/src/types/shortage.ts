@@ -223,6 +223,13 @@ export type MobileAgentPhase = 'idle' | 'awaiting_task_input' | 'confirming'
 
 export type MobileOnboardingPhase = 'role_pick' | 'ready'
 
+export type MobileRoleViewTarget =
+  | 'ops'
+  | 'sales'
+  | 'procurement'
+  | 'oa_approved'
+  | 'oa_rejected'
+
 export type ProductCategoryKey = 'oil' | 'rice' | 'noodle' | 'dry_spice' | 'other'
 
 export type FulfillmentOverviewStatusKind =

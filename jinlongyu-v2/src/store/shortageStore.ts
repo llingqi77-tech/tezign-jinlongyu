@@ -11,6 +11,7 @@ import type {
   MobileAgentPhase,
   MobileChatMessage,
   MobileOnboardingPhase,
+  MobileRoleViewTarget,
   ProcurementOaPreviewOutcome,
   SalesHotelDataPanelState,
   ShortagePO,
@@ -85,9 +86,12 @@ export interface ShortageState {
   mobileChatScrollToTopNonce: number
   salesHistoryOpen: boolean
   procurementOverviewOpen: boolean
+  mobileRoleView: MobileRoleViewTarget
 
   openWorkbench: () => void
   closeWorkbench: () => void
+  returnToRolePick: () => void
+  switchMobileRoleView: (target: MobileRoleViewTarget) => void
   setRole: (role: WorkbenchRole) => void
   selectTaskLine: (lineId: string | null) => void
   setExpandedSku: (sku: string | null) => void
@@ -196,6 +200,7 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
   mobileChatScrollToTopNonce: 0,
   salesHistoryOpen: false,
   procurementOverviewOpen: false,
+  mobileRoleView: 'procurement',
 
   openWorkbench: () => {
     const { signoffTimerId } = get()
@@ -207,7 +212,7 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
       mobileChatMessages: [],
       activeTaskLineId: null,
       mobileAgentPhase: 'idle',
-      mobileOnboardingPhase: 'role_pick',
+      mobileOnboardingPhase: 'ready',
       mobileDashboardOpen: false,
       mobileKpiDetailKind: null,
       mobileTaskListOpen: false,
@@ -223,7 +228,75 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
       mobileProcurementQuickView: null,
       mobileChatScrollTop: 0,
       mobileChatRestoreScrollOnNextMount: false,
+      salesHistoryOpen: false,
+      procurementOverviewOpen: false,
     })
+    get().switchMobileRoleView('procurement')
+  },
+
+  switchMobileRoleView: (target) => {
+    const baseReset = {
+      mobileOnboardingPhase: 'ready' as const,
+      mobileRoleView: target,
+      salesHistoryOpen: false,
+      procurementOverviewOpen: false,
+      selectedTaskLineId: null,
+      mobileDashboardOpen: false,
+      mobileKpiDetailKind: null,
+      mobileTaskListOpen: false,
+      mobileSalesHotelOverviewOpen: false,
+      mobileChatScrollTop: 0,
+      mobileChatRestoreScrollOnNextMount: false,
+      activeTaskLineId: null,
+      mobileAgentPhase: 'idle' as const,
+      mobileTaskDisplayIndex: 0,
+      expandedSku: null,
+    }
+
+    if (target === 'oa_approved') {
+      get().enterProcurementOaNotifyPreview('approved')
+      return
+    }
+    if (target === 'oa_rejected') {
+      get().enterProcurementOaNotifyPreview('rejected')
+      return
+    }
+
+    get().loadTodayShortages()
+
+    if (target === 'ops') {
+      set({
+        ...baseReset,
+        role: 'ops',
+        mobileChatMessages: [],
+        procurementActiveSku: null,
+        procurementSkuReadOnly: false,
+        procurementSkuHeaderLabel: null,
+        procurementOaPreview: null,
+        procurementListSort: null,
+        mobileSalesQuickView: null,
+        mobileProcurementQuickView: null,
+      })
+      return
+    }
+
+    set({
+      ...baseReset,
+      role: target,
+      mobileChatMessages: [],
+      procurementActiveSku: null,
+      procurementSkuReadOnly: false,
+      procurementSkuHeaderLabel: null,
+      procurementOaPreview: null,
+      procurementListSort: null,
+      mobileSalesQuickView: null,
+      mobileProcurementQuickView: null,
+    })
+    get().finishMobileActivation()
+  },
+
+  returnToRolePick: () => {
+    get().switchMobileRoleView('procurement')
   },
 
   closeWorkbench: () => {
@@ -297,15 +370,7 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
   closeProcurementSkuPage: () => {
     const wasPreview = get().procurementOaPreview != null
     if (wasPreview) {
-      get().loadTodayShortages()
-      set({
-        procurementActiveSku: null,
-        procurementSkuReadOnly: false,
-        procurementSkuHeaderLabel: null,
-        procurementOaPreview: null,
-        mobileChatRestoreScrollOnNextMount: false,
-      })
-      get().finishMobileActivation()
+      get().switchMobileRoleView('procurement')
       return
     }
     set({
@@ -330,6 +395,9 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
       activeTaskLineId: null,
       mobileAgentPhase: 'idle',
       mobileOnboardingPhase: 'ready',
+      mobileRoleView: outcome === 'approved' ? 'oa_approved' : 'oa_rejected',
+      salesHistoryOpen: false,
+      procurementOverviewOpen: false,
       mobileDashboardOpen: false,
       mobileKpiDetailKind: null,
       mobileTaskListOpen: false,
@@ -797,6 +865,7 @@ export const useShortageStore = create<ShortageState>((set, get) => ({
     set((s) => ({ mobileChatScrollToTopNonce: s.mobileChatScrollToTopNonce + 1 })),
   openSalesHistory: () => set({ salesHistoryOpen: true }),
   closeSalesHistory: () => set({ salesHistoryOpen: false }),
-  openProcurementOverview: () => set({ procurementOverviewOpen: true }),
+  openProcurementOverview: () =>
+    set({ procurementOverviewOpen: true, mobileProcurementQuickView: 'fulfillment' }),
   closeProcurementOverview: () => set({ procurementOverviewOpen: false }),
 }))

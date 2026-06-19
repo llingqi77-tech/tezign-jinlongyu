@@ -2,6 +2,7 @@ import type { OaApprovalStatus, ShortagePO, ShortagePOLine } from '../types/shor
 import { addCalendarDays } from '../utils/shortageAggregations'
 import { getRecommendedSuppliers } from '../utils/supplierRecommendations'
 import { withLineDefaults } from '../utils/shortageLineDefaults'
+import { buildDemoProcurementScrollOrders } from './infiniteScrollDemo'
 import { MOCK_SALES_NOTICE_ORDERS } from './salesNoticeOrders'
 
 const now = new Date()
@@ -739,4 +740,5 @@ export const MOCK_SHORTAGE_ORDERS: ShortagePO[] = [
     ],
   },
   ...MOCK_SALES_NOTICE_ORDERS,
+  ...buildDemoProcurementScrollOrders(),
 ]
